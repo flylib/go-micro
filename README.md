@@ -1,43 +1,101 @@
-# Go Micro [![Go.Dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/go-micro.dev/v5?tab=doc) [![Go Report Card](https://goreportcard.com/badge/github.com/go-micro/go-micro)](https://goreportcard.com/report/github.com/go-micro/go-micro)
+# Go Micro [![Go.Dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/go-micro.dev/v5?tab=doc)
 
-Go Micro is a framework for building services and agents in Go.
+Go Micro is a pluggable framework for building microservices in Go.
 
-Write services — they register, discover each other, and communicate via RPC and events. Every endpoint is automatically an AI-callable tool via [MCP](https://modelcontextprotocol.io/). Build agents to manage them intelligently. Both are Go code, both use the same primitives, both deploy the same way.
-
-## Sponsors
-
-<a href="https://go-micro.dev/blog/3"><img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Anthropic_logo.svg" height="26" /></a>
-&nbsp;&nbsp;
-<a href="https://go-micro.dev/blog/8"><img src="https://www.atlascloud.ai/logo.svg" height="26" /></a>
-
-**Want to support Go Micro and see your logo here?** [Become a sponsor](https://discord.gg/WeMU5AGxD) — reach out on Discord.
+You write services; the framework gives them service discovery, RPC, and pub/sub out of the box. Every moving part — how services find each other, how they talk, how messages are encoded, where state is stored — is a Go interface with a default implementation you can swap without touching business code.
 
 ## Contents
 
+- [Core Concepts](#core-concepts)
 - [Quick Start](#quick-start)
-- [Writing Services](#writing-services)
-- [Building Agents](#building-agents) — [Plan & Delegate](#plan--delegate), [Pluggable](#batteries-included-pluggable), [Paid tools (x402)](#paid-tools-x402), [A2A](#reachable-by-other-agents-a2a)
-- [Features](#features)
-- [CLI](#cli)
+- [Writing a Service](#writing-a-service)
 - [Multi-Service Projects](#multi-service-projects)
+- [Pluggable Backends](#pluggable-backends)
 - [Data Model](#data-model)
-- [AI Providers](#ai-providers)
+- [CLI](#cli)
 - [Examples](#examples)
-- [Docs](#docs)
+
+## Core Concepts
+
+### Service — the unit of work
+
+A **Service** is the top-level handle you build everything around. It wires together the pluggable pieces below, registers itself for discovery, and manages its own lifecycle (`Init` → `Run` → graceful stop on signal/context).
+
+```go
+service := micro.New("greeter")   // create
+service.Handle(new(Say))          // register RPC handlers
+service.Run()                     // start, block until signalled, then stop
+```
+
+Each service owns its own client, server, store, and cache, so several services can run in one binary (see [Multi-Service Projects](#multi-service-projects)).
+
+### The pluggable abstractions
+
+Everything the framework does is expressed as an interface with a default implementation and a functional-options constructor. Pick a different backend by passing a different option — no business-code changes.
+
+| Abstraction | Responsibility | Default | Other backends |
+|---|---|---|---|
+| **Registry** | Service discovery — register/lookup service nodes | mDNS | Consul, etcd, NATS |
+| **Broker** | Asynchronous pub/sub messaging | HTTP | NATS, RabbitMQ, memory |
+| **Transport** | Point-to-point synchronous communication (the RPC pipe) | HTTP | gRPC, NATS |
+| **Client** | Makes RPC calls (retries, timeouts, streaming) | RPC | gRPC |
+| **Server** | Serves RPC handlers and subscribers | RPC | gRPC |
+| **Selector** | Picks one node from Registry results (load balancing) | round-robin | — |
+| **Codec** | Encodes/decodes messages | protobuf/JSON | grpc, bytes, jsonrpc, text |
+| **Store** | Key-value persistence | file (bbolt) | Postgres, MySQL, NATS JetStream KV |
+| **Config** | Dynamic configuration from sources | — | env, file, flag, CLI, NATS, memory |
+| **Model** | Typed data layer (CRUD + queries) | memory | SQLite, Postgres |
+
+Supporting pieces: **Auth** (accounts/JWT), **Cache**, **Events** (JetStream streams), **Metadata** (request context), **Wrapper** (client/server middleware), **Logger**, and **Debug** (profile/trace/health).
+
+### How a request flows
+
+An RPC call travels through the abstractions in order:
+
+```
+Client.Call
+  → Selector picks a node from the Registry
+  → Transport opens a connection and sends the Message
+  → Server receives it
+  → Codec decodes the body
+  → Wrapper middleware chain runs
+  → your Handler executes
+  → Codec encodes the reply back
+```
+
+Because each hop is an interface, you can change the wire protocol (HTTP → gRPC → NATS), the discovery backend, or add middleware without rewriting handlers.
+
+### Message & headers
+
+The unit that moves across any Transport is a `Message`:
+
+```go
+type Message struct {
+    Header map[string]string // metadata
+    Body   []byte            // payload
+}
+```
+
+The header keys are standardized in the `transport/headers` package (`Micro-Service`, `Micro-Endpoint`, `Micro-Topic`, `Micro-Error`, `Micro-Trace-ID`, …). Every transport (HTTP, gRPC, NATS) and the broker/server use the **same** key names, so client, server, and middleware read request metadata the same way regardless of the underlying wire protocol. `transport/headers` is not a transport backend — it's the shared vocabulary the backends fill in.
+
+### Functional options
+
+Configuration everywhere uses the functional-options pattern: `Option func(*Options)`. Options hold pointers to the pluggable pieces so they can be swapped at runtime, and setting a top-level option (e.g. `Registry`) cascades down to the client, server, and broker so the components stay consistent.
+
+```go
+service := micro.New("greeter",
+    micro.Address(":8080"),
+    micro.Registry(consul.NewRegistry()),   // swaps discovery for the whole service
+)
+```
 
 ## Quick Start
 
 Install the CLI:
 
 ```bash
-# Binary (no Go required)
-curl -fsSL https://go-micro.dev/install.sh | sh
-
-# Or with Go
-go install go-micro.dev/v5/cmd/micro@v5.27.0
+go install go-micro.dev/v5/cmd/micro@latest
 ```
-
-### Fastest start — no API key
 
 Scaffold a service, run it, call it:
 
@@ -47,76 +105,31 @@ cd helloworld
 micro run
 ```
 
-Then in another terminal:
+In another terminal, call it through the HTTP API gateway that `micro run` starts on `:8080`:
 
 ```bash
 curl -X POST http://localhost:8080/api/helloworld/Helloworld.Call \
   -H 'Content-Type: application/json' -d '{"name":"World"}'
 ```
 
-### Generate from a prompt — with an LLM key
-
-Set a provider key, describe what you want, and the AI designs services, writes handlers, compiles, and starts them:
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY, GEMINI_API_KEY, ...
-micro run --prompt "a task management system with categories" --provider anthropic
-```
-
-The AI designs the architecture, you review it, then it generates handlers with real business logic, compiles them, and starts them:
+`micro run` gives you:
 
 ```
-Services:
-  ● task — Task management with status tracking
-  ● project — Project organization
-
-Generate? [Y/n]
-
-Micro
-  Services:
-    ● task
-    ● project
-  Agents:
-    ◆ agent
+# Dashboard:  http://localhost:8080
+# API:        http://localhost:8080/api/{service}/{method}
+# Health:     http://localhost:8080/health
 ```
 
-Then talk to your services from the console:
+## Writing a Service
 
-```
-> Create a project called Launch, then add three tasks to it
-
-→ project_Project_Create({"name":"Launch"})
-← {"record":{"id":"p1..."},"success":true}
-→ task_Task_Create({"title":"Design specs","project_id":"p1..."})
-→ task_Task_Create({"title":"Write code","project_id":"p1..."})
-→ task_Task_Create({"title":"Ship it","project_id":"p1..."})
-
-Created Work category and added 'Finish report' task to it.
-```
-
-When you need a capability that doesn't exist, the agent generates a new service mid-conversation:
-
-```
-> I need to track shipping. Create a shipment for order 123 to London.
-
-  ⚡ generating shipping service...
-  ✓ shipping
-  → shipping_Shipping_Create({"order_id":"123","destination":"London"})
-  ← {"record":{"id":"xyz...","status":"pending"}}
-
-  Created shipment for order 123 going to London.
-```
-
-Edit the generated code by hand at any time — re-running preserves your changes. [Read more](https://go-micro.dev/blog/13).
-
-## Writing Services
-
-Under the hood, a service is a struct with methods. Doc comments and `@example` tags become tool descriptions for AI agents automatically.
+A service is a struct with methods. Each exported method with the `(ctx, *Request, *Response) error` shape becomes an RPC endpoint.
 
 ```go
 package main
 
 import (
+    "context"
+
     "go-micro.dev/v5"
 )
 
@@ -131,7 +144,6 @@ type Response struct {
 type Say struct{}
 
 // Hello greets a person by name.
-// @example {"name": "Alice"}
 func (h *Say) Hello(ctx context.Context, req *Request, rsp *Response) error {
     rsp.Message = "Hello " + req.Name
     return nil
@@ -144,181 +156,29 @@ func main() {
 }
 ```
 
-Run it and everything is accessible — REST, gRPC, MCP, agent playground:
+Scaffold from a template instead:
 
 ```bash
-micro run
-# Dashboard:   http://localhost:8080
-# API:         http://localhost:8080/api/{service}/{method}
-# Agent:       http://localhost:8080/agent
-# MCP Tools:   http://localhost:8080/mcp/tools
+micro new helloworld               # default template
+micro new contacts --template crud # crud / pubsub / api
 ```
-
-You can also scaffold a service from a template:
-
-```bash
-micro new helloworld
-micro new contacts --template crud
-```
-
-## Building Agents
-
-An Agent is a service with an LLM inside it. It has a proto-defined `Agent.Chat` RPC endpoint, registers in the registry, and is callable like any service:
-
-```go
-agent := micro.NewAgent("task-mgr",
-    micro.AgentServices("task", "project"),
-    micro.AgentPrompt("You manage tasks and projects. You understand deadlines and priorities."),
-    micro.AgentProvider("anthropic"),
-)
-agent.Run()
-```
-
-The agent discovers its services from the registry, scopes its tools to their endpoints, and maintains conversation memory in the store. It registers itself so `micro chat` and other agents can find it.
-
-```go
-// Programmatic interaction
-resp, _ := agent.Ask(ctx, "What tasks are overdue?")
-fmt.Println(resp.Reply)
-```
-
-Multiple agents coordinate via RPC — each is a service with an `Agent.Chat` endpoint. `micro chat` routes to the right one.
-
-```bash
-micro agent list                    # list registered agents
-micro call task-mgr Agent.Chat '{"message": "What tasks are overdue?"}'
-```
-
-### Plan & Delegate
-
-Every agent gets two built-in capabilities, exposed as tools — no extra setup, no harness:
-
-- **`plan`** — for multi-step work, the agent records an ordered plan in its store-backed memory and stays oriented across turns.
-- **`delegate`** — the agent hands a self-contained subtask to another agent. If a registered agent already owns the relevant services, the hand-off goes over RPC to that agent; otherwise a focused, short-lived sub-agent is created for the subtask with its own isolated context.
-
-This keeps intelligence distributed: an agent doesn't need to know *how* to do everything, only *who* does. See [examples/agent-plan-delegate](examples/agent-plan-delegate/).
-
-```go
-// A sub-agent is just an agent — created with New, talked to with Ask.
-// delegate-first: reuse a registered agent, or spin up a focused one.
-resp, _ := agent.Ask(ctx, "Plan the launch, create the tasks, and have comms notify the owner.")
-```
-
-### Batteries included, pluggable
-
-Just as a service composes pluggable abstractions (registry, broker, store), an agent composes a **model**, **memory**, and **tools** — sane defaults out of the box, each swappable.
-
-```go
-agent := micro.NewAgent("assistant",
-    micro.AgentProvider("anthropic"),                 // model — swap the provider
-    micro.AgentMemory(micro.NewInMemory(50)),         // memory — default is store-backed & durable
-    micro.AgentTool("weather", "Get the weather for a city",
-        map[string]any{"city": map[string]any{"type": "string"}},
-        func(ctx context.Context, in map[string]any) (string, error) {
-            return getWeather(in["city"].(string))    // tools beyond your services — any function
-        }),
-    micro.AgentMaxSteps(8),                            // guardrails
-)
-```
-
-**Memory** is durable and store-backed by default (Postgres, NATS KV, or file), so an agent picks up where it left off after a restart — or supply your own with `AgentMemory`. **Tools** are your services automatically, plus any function you register with `AgentTool`.
-
-### Paid tools (x402)
-
-Every endpoint is an AI-callable tool — and it can be a *paid* tool. Go Micro supports [x402](https://x402.org), the HTTP 402 payment standard for agents, so a tool can require a stablecoin payment and an agent can settle it autonomously. It's opt-in and carries no crypto in the framework: verification is delegated to a pluggable facilitator (Coinbase, Alchemy, self-hosted), so Base and Solana are just different facilitators.
-
-```bash
-# Charge for tool calls at the MCP gateway (off unless you set a pay-to address)
-micro mcp serve --x402-pay-to 0xYourAddress --x402-network solana --x402-amount 10000
-# Per-tool amounts via a config file
-micro mcp serve --x402-config x402.json
-```
-
-See the [Payments (x402) guide](internal/website/docs/guides/x402-payments.md).
-
-### Reachable by other agents (A2A)
-
-Within a Go Micro system, agents reach each other over RPC. To make them reachable by agents on *other* frameworks, Go Micro speaks the [Agent2Agent (A2A) protocol](https://a2a-protocol.org). The A2A gateway discovers your agents from the registry, generates an Agent Card for each from its metadata — the same way the MCP gateway derives tools from service endpoints — and translates incoming A2A tasks to the agent's `Agent.Chat` RPC. No per-agent code: register an agent and it's reachable over A2A.
-
-```bash
-micro a2a serve --address :4000    # expose registered agents over A2A
-micro a2a list                     # agents and their Agent Card URLs
-```
-
-It works both ways. To call an agent on another framework, an `a2a.Client` is wired into the two places that hand off work: `flow.A2A(url)` as a workflow step (the cross-framework `Dispatch`), and `delegate` to an `http(s)` URL from inside an agent.
-
-MCP exposes your services as tools; A2A exposes your agents as agents. See the [A2A guide](internal/website/docs/guides/a2a-protocol.md).
-
-## Features
-
-### AI
-
-| Feature | Details |
-|---------|---------|
-| Agents | `micro.NewAgent()` — intelligent layer that manages services |
-| Plan & delegate | Built-in agent tools — plan multi-step work, delegate subtasks to other agents |
-| Pluggable memory | Durable store-backed conversation memory by default; swap with `AgentMemory` |
-| Custom tools | `AgentTool` — give an agent any function as a tool, beyond its services |
-| Guardrails | `MaxSteps` (stop on count), `LoopLimit` (stop repeated no-progress calls), `ApproveTool` (human-in-the-loop) |
-| Tool middleware | `AgentWrapTool` — wrap tool execution for logging, metrics, or retries (like client/server wrappers) |
-| Workflows | `micro.NewFlow()` — event-driven; one step, ordered durable steps, or triggers an agent |
-| Durable execution | Checkpointed flow steps survive a crash and resume where they stopped; store-backed by default, pluggable backend |
-| MCP gateway | Every endpoint is an AI tool automatically |
-| A2A gateway | Every agent is reachable over the Agent2Agent protocol; cards generated from the registry (`micro a2a`) |
-| Payments (x402) | Opt-in per-call payments for tools via the x402 standard; pluggable facilitator (Base, Solana, …) |
-| 7 LLM providers | Anthropic, OpenAI, Gemini, Groq, Mistral, Together, Atlas Cloud |
-| Interactive console | `micro run` includes a chat console for talking to services |
-| Service generation | `micro run --prompt` — describe a system, get running services |
-
-### Framework
-
-| Feature | Details |
-|---------|---------|
-| Service registry | mDNS (default), Consul, etcd |
-| RPC client/server | gRPC transport, load balancing, streaming |
-| Pub/sub events | NATS, RabbitMQ, HTTP broker |
-| Key-value store | File (bbolt), Postgres, NATS KV |
-| Typed model layer | CRUD + queries, SQLite/Postgres backends |
-| Everything swappable | All abstractions are Go interfaces |
-
-### Developer experience & deployment
-
-| Feature | Details |
-|---------|---------|
-| Hot reload | `micro run` watches files, rebuilds on change |
-| Templates | `micro new --template crud/pubsub/api` |
-| One-command deploy | `micro deploy user@server` — SSH + systemd, no Docker |
-
-## CLI
-
-| Command | Purpose |
-|---------|---------|
-| `micro run --prompt "..."` | Generate services + agent, start with interactive console |
-| `micro run` | Dev mode: hot reload, gateway, interactive console |
-| `micro run -d` | Detached mode (no console) |
-| `micro chat` | Standalone chat (when not using micro run) |
-| `micro agent list` | List registered agents |
-| `micro new myservice` | Scaffold a service |
-| `micro call service endpoint '{}'` | Call a service or agent from the CLI |
-| `micro build` | Compile production binaries |
-| `micro deploy user@server` | Deploy via SSH + systemd |
 
 ## Multi-Service Projects
 
-Run multiple services together:
+Run several services in one binary with a shared lifecycle:
 
 ```go
-users := micro.New("users", micro.Address(":9001"))
+users  := micro.New("users",  micro.Address(":9001"))
 orders := micro.New("orders", micro.Address(":9002"))
 
 users.Handle(new(Users))
 orders.Handle(new(Orders))
 
 g := micro.NewGroup(users, orders)
-g.Run()
+g.Run() // all start together, all stop together on signal
 ```
 
-Or use a `micro.mu` config file:
+Or describe a multi-service project with a `micro.mu` file (services start in dependency order):
 
 ```
 service users
@@ -329,9 +189,34 @@ service orders
     depends users
 ```
 
+## Pluggable Backends
+
+Swap any abstraction by importing a backend and passing it as an option — the rest of your code is unchanged.
+
+```go
+import (
+    "go-micro.dev/v5"
+    "go-micro.dev/v5/registry/consul"
+    "go-micro.dev/v5/transport/grpc"
+    "go-micro.dev/v5/broker/nats"
+)
+
+service := micro.New("orders",
+    micro.Registry(consul.NewRegistry()),
+    micro.Transport(grpc.NewTransport()),
+    micro.Broker(nats.NewBroker()),
+)
+```
+
+- **Registry:** mDNS (default), Consul, etcd, NATS
+- **Broker:** HTTP (default), NATS, RabbitMQ, memory
+- **Transport:** HTTP (default), gRPC, NATS
+- **Store:** file/bbolt (default), Postgres, MySQL, NATS JetStream KV
+- **Config sources:** env, file, flag, CLI, NATS, memory
+
 ## Data Model
 
-Typed persistence with CRUD and queries:
+Typed persistence with CRUD and queries on top of the store:
 
 ```go
 type User struct {
@@ -350,47 +235,30 @@ db.List(ctx, &results, model.Where("email", "alice@example.com"))
 
 Backends: memory (default), SQLite, Postgres.
 
-## AI Providers
+## CLI
 
-Swap providers with a single import — same interface everywhere:
-
-| Provider | Default Model |
-|----------|---------------|
-| Anthropic | `claude-sonnet-4-20250514` |
-| OpenAI | `gpt-4o` |
-| Google Gemini | `gemini-2.5-flash` |
-| Groq | `llama-3.3-70b-versatile` |
-| Mistral | `mistral-large-latest` |
-| Together AI | `Llama-3.3-70B-Instruct-Turbo` |
-| Atlas Cloud | `llama-3.3-70b` |
-
-```go
-m := ai.New("anthropic", ai.WithAPIKey(key))
-resp, _ := m.Generate(ctx, &ai.Request{Prompt: "hello"})
-```
+| Command | Purpose |
+|---|---|
+| `micro new myservice` | Scaffold a service (`--template crud/pubsub/api`) |
+| `micro run` | Dev mode: hot reload + HTTP API gateway + dashboard |
+| `micro server` | Production mode: gateway with auth + dashboard |
+| `micro call service Endpoint '{}'` | Call a service from the CLI |
+| `micro services` | List registered services |
+| `micro describe service` | Show a service's endpoints |
+| `micro gen proto` | Generate code from `.proto` (needs protoc + protoc-gen-micro) |
+| `micro build` | Compile production binaries |
+| `micro deploy user@server` | Deploy via SSH + systemd |
 
 ## Examples
 
-- [hello-world](examples/hello-world/) — Basic RPC service
-- [multi-service](examples/multi-service/) — Multiple services in one binary
-- [mcp](examples/mcp/) — MCP integration with AI agents
-- [agent-plan-delegate](examples/agent-plan-delegate/) — Agent planning and multi-agent delegation
-- [grpc-interop](examples/grpc-interop/) — Call go-micro from any gRPC client
+- [hello-world](examples/hello-world/) — basic RPC service
+- [multi-service](examples/multi-service/) — multiple services in one binary
+- [web-service](examples/web-service/) — HTTP service via the web package
+- [auth](examples/auth/) — authentication
+- [graceful-stop](examples/graceful-stop/) — clean shutdown
+- [grpc-interop](examples/grpc-interop/) — call go-micro from any gRPC client
+- [deployment](examples/deployment/) — deploying services
 
 See [all examples](examples/README.md).
-
-## Docs
-
-- [Getting Started](internal/website/docs/getting-started.md)
-- [AI Integration](internal/website/docs/ai-integration.md)
-- [Agents and Workflows](internal/website/docs/guides/agents-and-workflows.md)
-- [Agent Design](internal/docs/AGENT_DESIGN.md)
-- [Plan & Delegate](internal/website/docs/guides/plan-delegate.md)
-- [Agent Guardrails](internal/website/docs/guides/agent-guardrails.md)
-- [Payments (x402)](internal/website/docs/guides/x402-payments.md)
-- [MCP & AI Agents](internal/website/docs/mcp.md)
-- [Data Model](internal/website/docs/model.md)
-- [Deployment](internal/website/docs/deployment.md)
-- [Plugins](internal/website/docs/plugins.md)
 
 Package reference: https://pkg.go.dev/go-micro.dev/v5
