@@ -1,0 +1,104 @@
+# Go Micro Examples
+
+This directory contains runnable examples demonstrating various go-micro features and patterns.
+
+## Quick Start
+
+Each example can be run with `go run .` from its directory.
+
+## Examples
+
+### [hello-world](./hello-world/)
+Basic RPC service demonstrating core concepts:
+- Service creation and registration
+- Handler implementation
+- Client calls
+- Health checks
+
+**Run it:**
+```bash
+cd hello-world
+go run .
+```
+
+### [web-service](./web-service/)
+HTTP web service with service discovery:
+- HTTP handlers
+- Service registration
+- Health checks
+- JSON REST API
+
+**Run it:**
+```bash
+cd web-service
+go run .
+```
+
+### [multi-service](./multi-service/)
+Multiple services in a single binary — the modular monolith pattern:
+- Isolated server, client, store, and cache per service
+- Shared registry and broker for inter-service communication
+- Coordinated lifecycle with `service.Group`
+- Start monolith, split later when you need to scale independently
+
+**Run it:**
+```bash
+cd multi-service
+go run .
+```
+
+### [deployment](./deployment/)
+Docker Compose deployment with MCP gateway, Consul registry, and Jaeger tracing:
+- Production-like architecture in one `docker-compose up`
+- Standalone MCP gateway connected to service registry
+- Distributed tracing with OpenTelemetry + Jaeger
+
+### MCP Examples
+
+See the [mcp/](./mcp/) directory for AI agent integration examples:
+- **[hello](./mcp/hello/)** - Minimal MCP service (start here)
+- **[crud](./mcp/crud/)** - CRUD contact book with full agent documentation
+- **[workflow](./mcp/workflow/)** - Cross-service orchestration via AI agents
+- **[documented](./mcp/documented/)** - All MCP features with auth scopes
+
+### [agent-demo](./agent-demo/)
+Multi-service project management app (Projects, Tasks, Team) with seed data and agent playground integration.
+
+### [agent-plan-delegate](./agent-plan-delegate/)
+The two built-in agent capabilities in a small multi-agent system:
+- **plan** — an agent records an ordered plan in its store-backed memory before doing multi-step work
+- **delegate** — an agent hands a subtask to another agent (over RPC if it's registered, else to an ephemeral sub-agent)
+
+### [agent-wrap-tool](./agent-wrap-tool/)
+Middleware around an agent's tool execution with `AgentWrapTool`, the tool-side analogue of client/server wrappers:
+- **observe** — time every tool call and record per-tool metrics, correlated by call ID
+- **retry** — re-run a call whose result is an error, recovering from a transient failure before the model sees it
+
+### [flow-durable](./flow-durable/)
+A workflow as ordered, checkpointed steps that survives a crash and resumes where it stopped:
+- **steps** — a flow is a task with stages (`reserve → charge → confirm`), not just one LLM turn
+- **Checkpoint** — each step is persisted; on `Resume`, completed steps are not re-run (no duplicate side effects)
+
+## Coming Soon
+
+- **pubsub-events** - Event-driven architecture with NATS
+- **grpc-integration** - Using go-micro with gRPC
+
+## Prerequisites
+
+Some examples require external dependencies:
+
+- **NATS**: `docker run -p 4222:4222 nats:latest`
+- **Consul**: `docker run -p 8500:8500 consul:latest agent -dev -ui -client=0.0.0.0`
+- **Redis**: `docker run -p 6379:6379 redis:latest`
+
+## Contributing
+
+To add a new example:
+
+1. Create a new directory
+2. Add a descriptive README.md
+3. Include working code with comments
+4. Add to this index
+5. Ensure it runs with `go run .`
+
