@@ -17,7 +17,6 @@ import (
 	"go-micro.dev/v5/cmd/micro/cli/util"
 
 	// Import packages that register commands via init()
-	_ "go-micro.dev/v5/cmd/micro/cli/agent"
 	_ "go-micro.dev/v5/cmd/micro/cli/build"
 	_ "go-micro.dev/v5/cmd/micro/cli/deploy"
 	_ "go-micro.dev/v5/cmd/micro/cli/init"
@@ -43,33 +42,13 @@ func init() {
 			Name:      "new",
 			Usage:     "Create a new service",
 			ArgsUsage: "[name]",
-			UsageText: `  micro new helloworld                          # scaffold a single service
-  micro new --prompt "a todo list with tasks"    # AI-design multiple services
-  micro new --prompt "add tags to the task service"  # extend existing services`,
+			UsageText: `  micro new helloworld               # scaffold a single service
+  micro new --template crud orders   # scaffold from a template`,
 			Action: new.Run,
 			Flags: []cli.Flag{
-				&cli.BoolFlag{
-					Name:  "no-mcp",
-					Usage: "Disable MCP gateway integration in generated code",
-				},
 				&cli.StringFlag{
 					Name:  "template",
 					Usage: "Service template: default, crud, pubsub, api",
-				},
-				&cli.StringFlag{
-					Name:    "prompt",
-					Usage:   "Describe the system to generate (uses AI to design & build services with real business logic)",
-					EnvVars: []string{"MICRO_NEW_PROMPT"},
-				},
-				&cli.StringFlag{
-					Name:    "provider",
-					Usage:   "AI provider for --prompt (anthropic, openai, gemini, atlascloud, groq, mistral, together)",
-					EnvVars: []string{"MICRO_AI_PROVIDER"},
-				},
-				&cli.StringFlag{
-					Name:    "api_key",
-					Usage:   "API key for --prompt (or set ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.)",
-					EnvVars: []string{"MICRO_AI_API_KEY"},
 				},
 			},
 		},

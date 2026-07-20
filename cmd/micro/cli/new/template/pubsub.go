@@ -127,39 +127,6 @@ import (
 	pb "{{.Dir}}/proto"
 
 	"go-micro.dev/v5"
-	"go-micro.dev/v5/gateway/mcp"
-	log "go-micro.dev/v5/logger"
-)
-
-func main() {
-	service := micro.New("{{lower .Alias}}",
-		mcp.WithMCP(":3001"),
-	)
-
-	service.Init()
-
-	h := handler.New(service.Options().Broker)
-	pb.Register{{title .Alias}}Handler(service.Server(), h)
-
-	// Subscribe to events after service starts
-	go func() {
-		if err := h.Subscribe(); err != nil {
-			log.Fatalf("Failed to subscribe: %v", err)
-		}
-		log.Info("Subscribed to ", handler.Topic)
-	}()
-
-	service.Run()
-}
-`
-
-	PubsubMainSRVNoMCP = `package main
-
-import (
-	"{{.Dir}}/handler"
-	pb "{{.Dir}}/proto"
-
-	"go-micro.dev/v5"
 	log "go-micro.dev/v5/logger"
 )
 

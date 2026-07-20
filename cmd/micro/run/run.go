@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,22 +18,10 @@ import (
 	"time"
 
 	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/ai"
-	clt "go-micro.dev/v5/client"
 	"go-micro.dev/v5/cmd"
-	"go-micro.dev/v5/cmd/micro/cli/generate"
 	"go-micro.dev/v5/cmd/micro/run/config"
 	"go-micro.dev/v5/cmd/micro/run/watcher"
 	"go-micro.dev/v5/cmd/micro/server"
-
-
-	_ "go-micro.dev/v5/ai/anthropic"
-	_ "go-micro.dev/v5/ai/atlascloud"
-	_ "go-micro.dev/v5/ai/gemini"
-	_ "go-micro.dev/v5/ai/groq"
-	_ "go-micro.dev/v5/ai/mistral"
-	_ "go-micro.dev/v5/ai/openai"
-	_ "go-micro.dev/v5/ai/together"
 )
 
 // Color codes for log output
@@ -188,11 +175,6 @@ func waitForHealth(port int, timeout time.Duration) bool {
 }
 
 func Run(c *cli.Context) error {
-	// Handle --prompt: generate services first, then run them
-	if prompt := c.String("prompt"); prompt != "" {
-		return runWithPrompt(c, prompt)
-	}
-
 	dir := c.Args().Get(0)
 	if dir == "" {
 		dir = "."
@@ -347,13 +329,10 @@ func Run(c *cli.Context) error {
 
 	if !c.Bool("no-gateway") {
 		var err error
-		mcpAddr := c.String("mcp-address")
 		gw, err = server.StartGateway(server.GatewayOptions{
 			Address:     gatewayAddr,
 			AuthEnabled: true, // Auth enabled with default admin/micro user
 			Context:     context.Background(),
-			MCPEnabled:  mcpAddr != "",
-			MCPAddress:  mcpAddr,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to start gateway: %w", err)
@@ -376,7 +355,7 @@ func Run(c *cli.Context) error {
 	}
 
 	// Print startup banner
-	printBanner(services, gw, !c.Bool("no-watch"), c.String("mcp-address"))
+	printBanner(services, gw, !c.Bool("no-watch"))
 
 	// Setup signal handling
 	sigCh := make(chan os.Signal, 1)
@@ -431,12 +410,8 @@ func Run(c *cli.Context) error {
 		}()
 	}
 
-	// Interactive console or wait for signal
-	if c.Bool("detach") {
-		<-sigCh
-	} else {
-		runConsole(sigCh)
-	}
+	// Wait for shutdown signal
+	<-sigCh
 	fmt.Println("\nShutting down...")
 
 	if watch != nil {
@@ -508,7 +483,7 @@ func discoverNewServices(baseDir string, known map[string]*serviceProcess, binDi
 	return newSvcs
 }
 
-func printBanner(services []*serviceProcess, gw *server.Gateway, watching bool, mcpAddr string) {
+func printBanner(services []*serviceProcess, gw *server.Gateway, watching bool) {
 	fmt.Println()
 	fmt.Println("  \033[1mMicro\033[0m")
 	fmt.Println()
@@ -516,44 +491,17 @@ func printBanner(services []*serviceProcess, gw *server.Gateway, watching bool, 
 	if gw != nil {
 		fmt.Printf("  Dashboard   \033[36mhttp://localhost%s\033[0m\n", gw.Addr())
 		fmt.Printf("  API         \033[36mhttp://localhost%s/api/{service}/{method}\033[0m\n", gw.Addr())
-		fmt.Printf("  Agent       \033[36mhttp://localhost%s/agent\033[0m\n", gw.Addr())
 		fmt.Printf("  Health      \033[36mhttp://localhost%s/health\033[0m\n", gw.Addr())
-		if mcpAddr != "" {
-			fmt.Printf("  MCP         \033[36mhttp://localhost%s\033[0m\n", mcpAddr)
-			fmt.Printf("  MCP Tools   \033[36mhttp://localhost%s/mcp/tools\033[0m\n", mcpAddr)
-			fmt.Printf("  WebSocket   \033[36mws://localhost%s/mcp/ws\033[0m\n", mcpAddr)
-		}
-	}
-
-	var agents, svcs []*serviceProcess
-	for _, s := range services {
-		if s.name == "agent" {
-			agents = append(agents, s)
-		} else {
-			svcs = append(svcs, s)
-		}
 	}
 
 	fmt.Println()
 	fmt.Println("  Services:")
-	for _, svc := range svcs {
+	for _, svc := range services {
 		status := "\033[32m●\033[0m"
 		if !svc.running {
 			status = "\033[31m●\033[0m"
 		}
 		fmt.Printf("    %s %s\n", status, svc.name)
-	}
-
-	if len(agents) > 0 {
-		fmt.Println()
-		fmt.Println("  Agents:")
-		for _, a := range agents {
-			status := "\033[35m◆\033[0m"
-			if !a.running {
-				status = "\033[31m◆\033[0m"
-			}
-			fmt.Printf("    %s %s\n", status, a.name)
-		}
 	}
 
 	fmt.Println()
@@ -566,127 +514,6 @@ func printBanner(services []*serviceProcess, gw *server.Gateway, watching bool, 
 	fmt.Println()
 }
 
-func runConsole(sigCh chan os.Signal) {
-	// Detect provider and API key from environment
-	provider := os.Getenv("MICRO_AI_PROVIDER")
-	apiKey := os.Getenv("MICRO_AI_API_KEY")
-	if apiKey == "" {
-		for _, env := range []string{"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY",
-			"ATLASCLOUD_API_KEY", "GROQ_API_KEY", "MISTRAL_API_KEY", "TOGETHER_API_KEY"} {
-			if v := os.Getenv(env); v != "" {
-				apiKey = v
-				break
-			}
-		}
-	}
-	if provider == "" {
-		provider = ai.AutoDetectProvider("")
-	}
-
-	if apiKey == "" {
-		fmt.Println("  \033[2mSet MICRO_AI_API_KEY to enable the interactive console.\033[0m")
-		fmt.Println("  \033[2mCtrl-C to stop.\033[0m")
-		fmt.Println()
-		<-sigCh
-		return
-	}
-
-	// Wait a moment for services to register
-	time.Sleep(2 * time.Second)
-
-	// Set up tools and model
-	reg := registry.DefaultRegistry
-	cl := clt.DefaultClient
-	tools := ai.NewTools(reg, ai.ToolClient(cl))
-
-	var modelOpts []ai.Option
-	modelOpts = append(modelOpts, ai.WithAPIKey(apiKey))
-	modelOpts = append(modelOpts, ai.WithToolHandler(tools.Handler()))
-	m := ai.New(provider, modelOpts...)
-
-	hist := ai.NewHistory(50)
-
-	// Build system prompt with service list
-	discovered, _ := tools.Discover()
-	serviceNames := make(map[string]bool)
-	for _, t := range discovered {
-		parts := strings.SplitN(t.OriginalName, ".", 2)
-		if len(parts) == 2 {
-			serviceNames[parts[0]] = true
-		}
-	}
-	var svcList []string
-	for name := range serviceNames {
-		svcList = append(svcList, name)
-	}
-
-	sysPrompt := fmt.Sprintf("You are an agent that orchestrates microservices. Available services: %s. "+
-		"Use the available tools to fulfill requests. When you call a tool, explain what you are doing. "+
-		"If a capability doesn't exist, say so.",
-		strings.Join(svcList, ", "))
-
-	fmt.Printf("  \033[2m%d tools from %d services. Type a message or Ctrl-C to stop.\033[0m\n\n",
-		len(discovered), len(serviceNames))
-
-	// Interactive REPL
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Buffer(make([]byte, 0, 4096), 1024*1024)
-
-	done := make(chan struct{})
-	go func() {
-		for {
-			fmt.Print("\033[1;36m>\033[0m ")
-			if !scanner.Scan() {
-				close(done)
-				return
-			}
-			line := strings.TrimSpace(scanner.Text())
-			if line == "" {
-				continue
-			}
-
-			hist.Add("user", line)
-			resp, err := m.Generate(context.Background(), &ai.Request{
-				Prompt:       line,
-				SystemPrompt: sysPrompt,
-				Tools:        discovered,
-				Messages:     hist.Messages(),
-			})
-			if err != nil {
-				fmt.Printf("\033[31merror:\033[0m %v\n\n", err)
-				continue
-			}
-
-			if resp.Reply != "" {
-				hist.Add("assistant", resp.Reply)
-				fmt.Println(resp.Reply)
-			}
-			for _, tc := range resp.ToolCalls {
-				args, _ := json.Marshal(tc.Input)
-				fmt.Printf("  \033[33m→\033[0m \033[2m%s\033[0m(%s)\n", tc.Name, args)
-				if tc.Result != "" {
-					result := tc.Result
-					if len(result) > 200 {
-						result = result[:200] + "..."
-					}
-					fmt.Printf("  \033[32m←\033[0m \033[2m%s\033[0m\n", result)
-				}
-			}
-			if resp.Answer != "" {
-				hist.Add("assistant", resp.Answer)
-				fmt.Println()
-				fmt.Println(resp.Answer)
-			}
-			fmt.Println()
-		}
-	}()
-
-	select {
-	case <-sigCh:
-	case <-done:
-	}
-}
-
 func init() {
 	cmd.Register(&cli.Command{
 		Name:  "run",
@@ -695,10 +522,8 @@ func init() {
 
 Starts an HTTP gateway on :8080 providing:
   - Web dashboard at /
-  - Agent playground at /agent (AI chat with MCP tools)
   - API explorer at /api
   - API proxy at /api/{service}/{endpoint}
-  - MCP tools at /mcp/tools
   - Health checks at /health
 
 With a micro.mu or micro.json config file, services start in dependency order.
@@ -709,9 +534,7 @@ Examples:
   micro run --address :3000    # Gateway on custom port
   micro run --no-gateway       # Services only, no HTTP gateway
   micro run --no-watch         # Disable hot reload
-  micro run --env production   # Use production environment
-  micro run --mcp-address :3000  # Enable MCP protocol gateway
-  micro run --prompt "an order system for dropshipping"  # Generate and run`,
+  micro run --env production   # Use production environment`,
 		Action: Run,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -728,114 +551,12 @@ Examples:
 				Name:  "no-watch",
 				Usage: "Disable hot reload (file watching)",
 			},
-			&cli.BoolFlag{
-				Name:    "detach",
-				Aliases: []string{"d"},
-				Usage:   "Run without interactive console (background mode)",
-			},
 			&cli.StringFlag{
 				Name:    "env",
 				Aliases: []string{"e"},
 				Usage:   "Environment to use (default: development)",
 				EnvVars: []string{"MICRO_ENV"},
 			},
-			&cli.StringFlag{
-				Name:    "mcp-address",
-				Usage:   "MCP gateway address (e.g., :3000). Enables MCP protocol for AI tools.",
-				EnvVars: []string{"MICRO_MCP_ADDRESS"},
-			},
-			&cli.StringFlag{
-				Name:    "prompt",
-				Usage:   "Describe a system to generate and run (AI designs, builds, and starts services)",
-				EnvVars: []string{"MICRO_RUN_PROMPT"},
-			},
-			&cli.StringFlag{
-				Name:    "provider",
-				Usage:   "AI provider for --prompt (anthropic, openai, gemini, atlascloud, groq, mistral, together)",
-				EnvVars: []string{"MICRO_AI_PROVIDER"},
-			},
-			&cli.StringFlag{
-				Name:    "api_key",
-				Usage:   "API key for --prompt (or set ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.)",
-				EnvVars: []string{"MICRO_AI_API_KEY"},
-			},
 		},
 	})
-}
-
-func runWithPrompt(c *cli.Context, prompt string) error {
-	provider := c.String("provider")
-	apiKey := c.String("api_key")
-	if apiKey == "" {
-		for _, env := range []string{"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY",
-			"ATLASCLOUD_API_KEY", "GROQ_API_KEY", "MISTRAL_API_KEY", "TOGETHER_API_KEY", "MICRO_AI_API_KEY"} {
-			if v := os.Getenv(env); v != "" {
-				apiKey = v
-				break
-			}
-		}
-	}
-	if apiKey == "" {
-		return fmt.Errorf("--api_key or a provider API key env var is required for --prompt")
-	}
-
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
-
-	fmt.Println()
-	fmt.Println("  \033[1mmicro run --prompt\033[0m")
-	fmt.Println()
-	fmt.Printf("  \033[2mDesigning services for:\033[0m %s\n\n", prompt)
-
-	design, err := generate.Design(ctx, provider, apiKey, "", ".", prompt)
-	if err != nil {
-		return fmt.Errorf("design failed: %w", err)
-	}
-
-	fmt.Println("  Services:")
-	for _, svc := range design.Services {
-		fmt.Printf("    \033[32m●\033[0m \033[36m%s\033[0m — %s\n", svc.Name, svc.Description)
-		for _, ep := range svc.Endpoints {
-			fmt.Printf("      %s: %s\n", ep.Name, ep.Description)
-		}
-	}
-	fmt.Println()
-
-	if !confirmGenerate() {
-		fmt.Println("  Cancelled.")
-		return nil
-	}
-
-	fmt.Println("  Generating code...")
-	if err := generate.Generate(ctx, ".", design, provider, apiKey, ""); err != nil {
-		return fmt.Errorf("generate failed: %w", err)
-	}
-	for _, svc := range design.Services {
-		fmt.Printf("    \033[32m✓\033[0m %s/\n", svc.Name)
-	}
-	fmt.Println()
-
-	// Set env vars so the agent process can pick them up
-	if provider != "" {
-		os.Setenv("MICRO_AI_PROVIDER", provider)
-	}
-	os.Setenv("MICRO_AI_API_KEY", apiKey)
-
-	// Now run normally — micro run discovers the generated services + agent
-	fmt.Println("  Starting services...")
-	fmt.Println()
-
-	cancel()
-	c.Set("prompt", "")
-	return Run(c)
-}
-
-func confirmGenerate() bool {
-	fmt.Print("  Generate? [Y/n] ")
-	scanner := bufio.NewScanner(os.Stdin)
-	if !scanner.Scan() {
-		return false
-	}
-	answer := strings.TrimSpace(strings.ToLower(scanner.Text()))
-	return answer == "" || answer == "y" || answer == "yes"
 }

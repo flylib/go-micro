@@ -62,3 +62,5 @@ examples/mcp/hello/hello
 /plan-delegate
 /agent-plan-delegate
 /micro-mcp-gateway
+
+.codegraph

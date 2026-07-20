@@ -2,20 +2,14 @@
 package new
 
 import (
-	"bufio"
-	"context"
 	"fmt"
 	"go/build"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
-
-	"go-micro.dev/v5/cmd/micro/cli/generate"
 	"text/template"
 	"time"
 
@@ -144,11 +138,6 @@ func addFileToTree(root treeprint.Tree, file string) {
 }
 
 func Run(ctx *cli.Context) error {
-	// Handle --prompt: design services with AI, then generate each one
-	if prompt := ctx.String("prompt"); prompt != "" {
-		return runPrompt(ctx, prompt)
-	}
-
 	dir := ctx.Args().First()
 	if len(dir) == 0 {
 		fmt.Println("specify service name")
@@ -188,11 +177,10 @@ func Run(ctx *cli.Context) error {
 	}
 	goDir = filepath.Join(goPath, "src", path.Clean(dir))
 
-	noMCP := ctx.Bool("no-mcp")
 	templateName := ctx.String("template")
 
 	// Select templates based on --template flag
-	mainTmpl, handlerTmpl, protoTmpl := selectTemplates(templateName, noMCP)
+	mainTmpl, handlerTmpl, protoTmpl := selectTemplates(templateName)
 
 	c := config{
 		Alias:     dir,
@@ -239,45 +227,20 @@ func Run(ctx *cli.Context) error {
 	fmt.Println("  Next steps:")
 	fmt.Printf("    cd %s\n", dir)
 	fmt.Println("    go run .")
-	if !noMCP {
-		fmt.Println()
-		fmt.Printf("    MCP tools   \033[36mhttp://localhost:3001/mcp/tools\033[0m\n")
-		fmt.Println("    Claude Code \033[2mmicro mcp serve\033[0m")
-	}
 	fmt.Println()
 	return nil
 }
 
-func selectTemplates(name string, noMCP bool) (mainTmpl, handlerTmpl, protoTmpl string) {
+func selectTemplates(name string) (mainTmpl, handlerTmpl, protoTmpl string) {
 	switch name {
 	case "crud":
-		if noMCP {
-			mainTmpl = tmpl.MainSRVNoMCP
-		} else {
-			mainTmpl = tmpl.MainSRV
-		}
-		return mainTmpl, tmpl.CrudHandlerSRV, tmpl.CrudProtoSRV
+		return tmpl.MainSRV, tmpl.CrudHandlerSRV, tmpl.CrudProtoSRV
 	case "pubsub":
-		if noMCP {
-			mainTmpl = tmpl.PubsubMainSRVNoMCP
-		} else {
-			mainTmpl = tmpl.PubsubMainSRV
-		}
-		return mainTmpl, tmpl.PubsubHandlerSRV, tmpl.PubsubProtoSRV
+		return tmpl.PubsubMainSRV, tmpl.PubsubHandlerSRV, tmpl.PubsubProtoSRV
 	case "api":
-		if noMCP {
-			mainTmpl = tmpl.MainSRVNoMCP
-		} else {
-			mainTmpl = tmpl.MainSRV
-		}
-		return mainTmpl, tmpl.ApiHandlerSRV, tmpl.ApiProtoSRV
+		return tmpl.MainSRV, tmpl.ApiHandlerSRV, tmpl.ApiProtoSRV
 	default:
-		if noMCP {
-			mainTmpl = tmpl.MainSRVNoMCP
-		} else {
-			mainTmpl = tmpl.MainSRV
-		}
-		return mainTmpl, tmpl.HandlerSRV, tmpl.ProtoSRV
+		return tmpl.MainSRV, tmpl.HandlerSRV, tmpl.ProtoSRV
 	}
 }
 
@@ -317,77 +280,4 @@ func printTree(dir string) {
 	}
 	filepath.Walk(dir, walk)
 	fmt.Println(t.String())
-}
-
-func runPrompt(cliCtx *cli.Context, prompt string) error {
-	provider := cliCtx.String("provider")
-	apiKey := cliCtx.String("api_key")
-	if apiKey == "" {
-		// Try provider-specific env vars
-		for _, env := range []string{"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY",
-			"ATLASCLOUD_API_KEY", "GROQ_API_KEY", "MISTRAL_API_KEY", "TOGETHER_API_KEY", "MICRO_AI_API_KEY"} {
-			if v := os.Getenv(env); v != "" {
-				apiKey = v
-				break
-			}
-		}
-	}
-	if apiKey == "" {
-		return fmt.Errorf("--api_key or a provider API key env var is required for --prompt")
-	}
-
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
-
-	fmt.Println()
-	fmt.Println("  \033[1mmicro new --prompt\033[0m")
-	fmt.Println()
-	fmt.Printf("  \033[2mDesigning services for:\033[0m %s\n\n", prompt)
-
-	design, err := generate.Design(ctx, provider, apiKey, "", ".", prompt)
-	if err != nil {
-		return fmt.Errorf("design failed: %w", err)
-	}
-
-	fmt.Println("  Services:")
-	for _, svc := range design.Services {
-		fmt.Printf("    \033[32m●\033[0m \033[36m%s\033[0m — %s\n", svc.Name, svc.Description)
-		for _, ep := range svc.Endpoints {
-			fmt.Printf("      %s: %s\n", ep.Name, ep.Description)
-		}
-	}
-	fmt.Println()
-
-	if !confirmGenerate() {
-		fmt.Println("  Cancelled.")
-		return nil
-	}
-
-	fmt.Println("  Generating code...")
-	if err := generate.Generate(ctx, ".", design, provider, apiKey, ""); err != nil {
-		return fmt.Errorf("generate failed: %w", err)
-	}
-
-	for _, svc := range design.Services {
-		fmt.Printf("    \033[32m✓\033[0m %s/\n", svc.Name)
-	}
-	fmt.Println()
-
-	fmt.Println("  \033[32m✓\033[0m All services generated")
-	fmt.Println()
-	fmt.Println("  Next steps:")
-	fmt.Println("    micro run                          \033[2m# start all services\033[0m")
-	fmt.Println("    micro chat --provider anthropic    \033[2m# talk to them\033[0m")
-	fmt.Println()
-	return nil
-}
-
-func confirmGenerate() bool {
-	fmt.Print("  Generate? [Y/n] ")
-	scanner := bufio.NewScanner(os.Stdin)
-	if !scanner.Scan() {
-		return false
-	}
-	answer := strings.TrimSpace(strings.ToLower(scanner.Text()))
-	return answer == "" || answer == "y" || answer == "yes"
 }

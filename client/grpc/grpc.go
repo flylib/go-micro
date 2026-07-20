@@ -16,7 +16,7 @@ import (
 	"go-micro.dev/v5/cmd"
 	raw "go-micro.dev/v5/codec/bytes"
 	"go-micro.dev/v5/errors"
-	pnet "go-micro.dev/v5/internal/util/net"
+	pnet "go-micro.dev/v5/inte
 	"go-micro.dev/v5/metadata"
 	"go-micro.dev/v5/registry"
 	"go-micro.dev/v5/selector"

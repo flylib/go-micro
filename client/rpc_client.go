@@ -16,7 +16,7 @@ import (
 	merrors "go-micro.dev/v5/errors"
 	"go-micro.dev/v5/internal/util/buf"
 	"go-micro.dev/v5/internal/util/net"
-	"go-micro.dev/v5/internal/util/pool"
+	"go-micro.
 	log "go-micro.dev/v5/logger"
 	"go-micro.dev/v5/metadata"
 	"go-micro.dev/v5/registry"

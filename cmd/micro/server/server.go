@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -25,18 +24,8 @@ import (
 	"time"
 
 	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/ai"
-	_ "go-micro.dev/v5/ai/anthropic"
-	_ "go-micro.dev/v5/ai/atlascloud"
-	_ "go-micro.dev/v5/ai/gemini"
-	_ "go-micro.dev/v5/ai/groq"
-	_ "go-micro.dev/v5/ai/mistral"
-	_ "go-micro.dev/v5/ai/openai"
-	_ "go-micro.dev/v5/ai/together"
 	"go-micro.dev/v5/auth"
-	"go-micro.dev/v5/client"
 	"go-micro.dev/v5/cmd"
-	codecBytes "go-micro.dev/v5/codec/bytes"
 	"go-micro.dev/v5/registry"
 	"go-micro.dev/v5/store"
 	"golang.org/x/crypto/bcrypt"
@@ -44,8 +33,6 @@ import (
 
 // HTML is the embedded filesystem for templates and static files, set by main.go
 var HTML fs.FS
-
-const agentSystemPrompt = "You are an agent that helps users interact with microservices. Use the available tools to fulfill user requests. When you call a tool, explain what you are doing."
 
 var (
 	apiCache struct {
@@ -66,7 +53,6 @@ type templates struct {
 	authTokens *template.Template
 	authLogin  *template.Template
 	authUsers  *template.Template
-	playground *template.Template
 	scopes     *template.Template
 }
 type TemplateUser struct {
@@ -90,7 +76,6 @@ func parseTemplates() *templates {
 		authTokens: template.Must(template.ParseFS(HTML, "web/templates/base.html", "web/templates/auth_tokens.html")),
 		authLogin:  template.Must(template.ParseFS(HTML, "web/templates/base.html", "web/templates/auth_login.html")),
 		authUsers:  template.Must(template.ParseFS(HTML, "web/templates/base.html", "web/templates/auth_users.html")),
-		playground: template.Must(template.ParseFS(HTML, "web/templates/base.html", "web/templates/playground.html")),
 		scopes:     template.Must(template.ParseFS(HTML, "web/templates/base.html", "web/templates/scopes.html")),
 	}
 }
@@ -433,386 +418,6 @@ func registerHandlers(mux *http.ServeMux, tmpls *templates, storeInst store.Stor
 		io.Copy(w, f)
 	})
 
-	// MCP API endpoints - list tools and call tools through the web server
-	mux.HandleFunc("/mcp/tools", wrap(func(w http.ResponseWriter, r *http.Request) {
-		services, err := registry.ListServices()
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(500)
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-			return
-		}
-		var tools []map[string]any
-		for _, svc := range services {
-			fullSvcs, err := registry.GetService(svc.Name)
-			if err != nil || len(fullSvcs) == 0 {
-				continue
-			}
-			for _, ep := range fullSvcs[0].Endpoints {
-				toolName := fmt.Sprintf("%s.%s", svc.Name, ep.Name)
-				description := fmt.Sprintf("Call %s on %s service", ep.Name, svc.Name)
-				if ep.Metadata != nil {
-					if desc, ok := ep.Metadata["description"]; ok && desc != "" {
-						description = desc
-					}
-				}
-				inputSchema := map[string]any{
-					"type":       "object",
-					"properties": map[string]any{},
-				}
-				if ep.Request != nil && len(ep.Request.Values) > 0 {
-					props := inputSchema["properties"].(map[string]any)
-					for _, field := range ep.Request.Values {
-						props[field.Name] = map[string]any{
-							"type":        mapGoTypeToJSON(field.Type),
-							"description": fmt.Sprintf("%s field", field.Name),
-						}
-					}
-				}
-				tool := map[string]any{
-					"name":        toolName,
-					"description": description,
-					"inputSchema": inputSchema,
-				}
-				// Extract scopes from endpoint metadata or store
-				if ep.Metadata != nil {
-					if scopes, ok := ep.Metadata["scopes"]; ok && scopes != "" {
-						tool["scopes"] = strings.Split(scopes, ",")
-					}
-				}
-				// Override with stored scopes (from UI) if present
-				if recs, _ := storeInst.Read("endpoint-scopes/" + toolName); len(recs) > 0 {
-					var storedScopes []string
-					if err := json.Unmarshal(recs[0].Value, &storedScopes); err == nil && len(storedScopes) > 0 {
-						tool["scopes"] = storedScopes
-					}
-				}
-				tools = append(tools, tool)
-			}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"tools": tools})
-	}))
-
-	mux.HandleFunc("/mcp/call", wrap(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
-			return
-		}
-		var req struct {
-			Tool  string         `json:"tool"`
-			Input map[string]any `json:"input"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-			return
-		}
-		// Parse tool name into service and endpoint
-		parts := strings.SplitN(req.Tool, ".", 2)
-		if len(parts) != 2 {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": "invalid tool name, expected service.endpoint"})
-			return
-		}
-		serviceName := parts[0]
-		endpointName := parts[1]
-
-		// Check endpoint scopes
-		if !checkEndpointScopes(w, r, req.Tool) {
-			return
-		}
-
-		// Build RPC request using default client
-		inputBytes, err := json.Marshal(req.Input)
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-			return
-		}
-
-		rpcReq := client.DefaultClient.NewRequest(serviceName, endpointName, &codecBytes.Frame{Data: inputBytes})
-		var rsp codecBytes.Frame
-		if err := client.DefaultClient.Call(r.Context(), rpcReq, &rsp); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("RPC call failed: %v", err)})
-			return
-		}
-
-		var traceBytes [16]byte
-		rand.Read(traceBytes[:])
-		traceID := fmt.Sprintf("%x", traceBytes)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
-			"result":   json.RawMessage(rsp.Data),
-			"trace_id": traceID,
-		})
-	}))
-
-	// Agent settings endpoints
-	mux.HandleFunc("/api/agent/settings", wrap(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if r.Method == "GET" {
-			recs, _ := storeInst.Read("agent/settings")
-			if len(recs) == 0 {
-				json.NewEncoder(w).Encode(map[string]string{})
-				return
-			}
-			var settings map[string]string
-			if err := json.Unmarshal(recs[0].Value, &settings); err != nil {
-				log.Printf("[agent] failed to parse settings: %v", err)
-				json.NewEncoder(w).Encode(map[string]string{})
-				return
-			}
-			json.NewEncoder(w).Encode(settings)
-			return
-		}
-		if r.Method == "POST" {
-			var settings map[string]string
-			if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-				return
-			}
-			b, _ := json.Marshal(settings)
-			storeInst.Write(&store.Record{Key: "agent/settings", Value: b})
-			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-			return
-		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
-	}))
-
-	// Agent prompt endpoint — sends user prompt to LLM with tool definitions
-	mux.HandleFunc("/api/agent/prompt", wrap(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if r.Method != "POST" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
-			return
-		}
-		var req struct {
-			Prompt string `json:"prompt"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-			return
-		}
-
-		// Load settings
-		recs, _ := storeInst.Read("agent/settings")
-		var settings map[string]string
-		if len(recs) > 0 {
-			if err := json.Unmarshal(recs[0].Value, &settings); err != nil {
-				log.Printf("[agent] failed to parse settings: %v", err)
-			}
-		}
-		apiKey := ""
-		modelName := ""
-		baseURL := ""
-		provider := ""
-		if settings != nil {
-			if v := settings["api_key"]; v != "" {
-				apiKey = v
-			}
-			if v := settings["model"]; v != "" {
-				modelName = v
-			}
-			if v := settings["base_url"]; v != "" {
-				baseURL = v
-			}
-			if v := settings["provider"]; v != "" {
-				provider = v
-			}
-		}
-		if apiKey == "" {
-			json.NewEncoder(w).Encode(map[string]string{"error": "No API key configured. Go to Agent settings to add one."})
-			return
-		}
-
-		// Auto-detect provider if not explicitly set
-		if provider == "" {
-			provider = ai.AutoDetectProvider(baseURL)
-		}
-
-		// Discover tools from registry
-		services, _ := registry.ListServices()
-		var discoveredTools []ai.Tool
-		// safeNameMap maps LLM-safe names back to original dotted names
-		safeNameMap := map[string]string{}
-		for _, svc := range services {
-			fullSvcs, err := registry.GetService(svc.Name)
-			if err != nil || len(fullSvcs) == 0 {
-				continue
-			}
-			for _, ep := range fullSvcs[0].Endpoints {
-				tName := fmt.Sprintf("%s.%s", svc.Name, ep.Name)
-				safeName := strings.ReplaceAll(tName, ".", "_")
-				safeNameMap[safeName] = tName
-				desc := fmt.Sprintf("Call %s on %s service", ep.Name, svc.Name)
-				if ep.Metadata != nil {
-					if d, ok := ep.Metadata["description"]; ok && d != "" {
-						desc = d
-					}
-				}
-				props := map[string]any{}
-				if ep.Request != nil {
-					for _, field := range ep.Request.Values {
-						props[field.Name] = map[string]any{
-							"type":        mapGoTypeToJSON(field.Type),
-							"description": fmt.Sprintf("%s (%s)", field.Name, field.Type),
-						}
-					}
-				}
-				discoveredTools = append(discoveredTools, ai.Tool{
-					Name:         safeName,
-					OriginalName: tName,
-					Description:  desc,
-					Properties:   props,
-				})
-			}
-		}
-
-		// executeToolCall runs an RPC tool call and returns the result.
-		// toolName can be either the original dotted name or the LLM-safe
-		// underscored name; the safe name is resolved first.
-		// Checks endpoint scopes against the caller's token before executing.
-		executeToolCall := func(_ context.Context, call ai.ToolCall) ai.ToolResult {
-			toolName := call.Name
-			input := call.Input
-			if orig, ok := safeNameMap[toolName]; ok {
-				toolName = orig
-			}
-			// Check endpoint scopes
-			if authEnabled {
-				recs, _ := storeInst.Read("endpoint-scopes/" + toolName)
-				if len(recs) > 0 {
-					var requiredScopes []string
-					if err := json.Unmarshal(recs[0].Value, &requiredScopes); err == nil && len(requiredScopes) > 0 {
-						// Get caller's scopes from JWT
-						callerScopes := []string{}
-						token := ""
-						if authz := r.Header.Get("Authorization"); strings.HasPrefix(authz, "Bearer ") {
-							token = strings.TrimPrefix(authz, "Bearer ")
-						}
-						if token == "" {
-							if cookie, err := r.Cookie("micro_token"); err == nil {
-								token = cookie.Value
-							}
-						}
-						if token != "" {
-							if claims, err := ParseJWT(token); err == nil {
-								if s, ok := claims["scopes"].([]interface{}); ok {
-									for _, v := range s {
-										if str, ok := v.(string); ok {
-											callerScopes = append(callerScopes, str)
-										}
-									}
-								}
-							}
-						}
-						allowed := false
-						for _, cs := range callerScopes {
-							if cs == "*" {
-								allowed = true
-								break
-							}
-							for _, rs := range requiredScopes {
-								if cs == rs {
-									allowed = true
-									break
-								}
-							}
-							if allowed {
-								break
-							}
-						}
-						if !allowed {
-							errMsg := fmt.Sprintf(`{"error":"insufficient scopes","required_scopes":"%s"}`, strings.Join(requiredScopes, ","))
-							return ai.ToolResult{ID: call.ID, Value: map[string]string{"error": "insufficient scopes", "required_scopes": strings.Join(requiredScopes, ",")}, Content: errMsg}
-						}
-					}
-				}
-			}
-			parts := strings.SplitN(toolName, ".", 2)
-			if len(parts) != 2 {
-				errMsg := `{"error":"invalid tool name"}`
-				return ai.ToolResult{ID: call.ID, Value: map[string]string{"error": "invalid tool name"}, Content: errMsg}
-			}
-			inputBytes, _ := json.Marshal(input)
-			rpcReq := client.DefaultClient.NewRequest(parts[0], parts[1], &codecBytes.Frame{Data: inputBytes})
-			var rsp codecBytes.Frame
-			if err := client.DefaultClient.Call(r.Context(), rpcReq, &rsp); err != nil {
-				errMsg := fmt.Sprintf(`{"error":"%s"}`, err.Error())
-				return ai.ToolResult{ID: call.ID, Value: map[string]string{"error": err.Error()}, Content: errMsg}
-			}
-			var rpcResult any
-			if err := json.Unmarshal(rsp.Data, &rpcResult); err != nil {
-				rpcResult = string(rsp.Data)
-			}
-			return ai.ToolResult{ID: call.ID, Value: rpcResult, Content: string(rsp.Data)}
-		}
-
-		// Create model with options
-		var modelOpts []ai.Option
-		modelOpts = append(modelOpts, ai.WithAPIKey(apiKey))
-		if modelName != "" {
-			modelOpts = append(modelOpts, ai.WithModel(modelName))
-		}
-		if baseURL != "" {
-			modelOpts = append(modelOpts, ai.WithBaseURL(baseURL))
-		}
-		modelOpts = append(modelOpts, ai.WithToolHandler(executeToolCall))
-
-		m := ai.New(provider, modelOpts...)
-		if m == nil {
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create model provider"})
-			return
-		}
-
-		// Build request
-		modelReq := &ai.Request{
-			Prompt:       req.Prompt,
-			SystemPrompt: agentSystemPrompt,
-			Tools:        discoveredTools,
-		}
-
-		// Generate response
-		response, err := m.Generate(r.Context(), modelReq)
-		if err != nil {
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-			return
-		}
-
-		// Build result
-		result := map[string]any{}
-		if response.Reply != "" {
-			result["reply"] = response.Reply
-		}
-		if len(response.ToolCalls) > 0 {
-			var toolCalls []map[string]any
-			for _, tc := range response.ToolCalls {
-				toolCalls = append(toolCalls, map[string]any{
-					"tool":  tc.Name,
-					"input": tc.Input,
-				})
-			}
-			result["tool_calls"] = toolCalls
-		}
-		if response.Answer != "" {
-			result["answer"] = response.Answer
-		}
-
-		json.NewEncoder(w).Encode(result)
-	}))
-
 	mux.HandleFunc("/", wrap(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		if strings.HasPrefix(path, "/auth/") {
@@ -943,11 +548,6 @@ You can generate tokens on the <a href='/auth/tokens'>Tokens page</a>.
 			}
 			sort.Strings(serviceNames)
 			_ = renderPage(w, tmpls.service, map[string]any{"Title": "Services", "WebLink": "/", "Services": serviceNames, "User": user})
-
-			return
-		}
-		if path == "/agent" {
-			_ = renderPage(w, tmpls.playground, map[string]any{"Title": "Agent", "WebLink": "/", "User": user})
 
 			return
 		}
@@ -1522,34 +1122,14 @@ func Run(c *cli.Context) error {
 		addr = ":8080"
 	}
 
-	mcpAddr := c.String("mcp-address")
-
 	// Run the gateway with authentication enabled
 	opts := GatewayOptions{
 		Address:     addr,
 		AuthEnabled: true,
 		Context:     c.Context,
-		MCPEnabled:  mcpAddr != "",
-		MCPAddress:  mcpAddr,
 	}
 
 	return RunGateway(opts)
-}
-
-// mapGoTypeToJSON maps Go types to JSON schema types
-func mapGoTypeToJSON(goType string) string {
-	switch goType {
-	case "string":
-		return "string"
-	case "int", "int32", "int64", "uint", "uint32", "uint64":
-		return "integer"
-	case "float32", "float64":
-		return "number"
-	case "bool":
-		return "boolean"
-	default:
-		return "object"
-	}
 }
 
 // --- PID FILES ---
@@ -1675,11 +1255,6 @@ func init() {
 				Usage:   "Address to listen on",
 				EnvVars: []string{"MICRO_SERVER_ADDRESS"},
 				Value:   ":8080",
-			},
-			&cli.StringFlag{
-				Name:    "mcp-address",
-				Usage:   "MCP gateway address (e.g., :3000). Enables MCP protocol support for AI tools.",
-				EnvVars: []string{"MICRO_MCP_ADDRESS"},
 			},
 		},
 	})

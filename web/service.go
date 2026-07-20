@@ -20,8 +20,7 @@ import (
 	mnet "go-micro.dev/v5/internal/util/net"
 	signalutil "go-micro.dev/v5/internal/util/signal"
 	mls "go-micro.dev/v5/internal/util/tls"
-	log "go-micro.dev/v5/logger"
-	"go-micro.dev/v5/registry"
+	l
 )
 
 type service struct {

@@ -21,8 +21,7 @@ import (
 	mnet "go-micro.dev/v5/internal/util/net"
 	mls "go-micro.dev/v5/internal/util/tls"
 	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/registry/cache"
-	"go-micro.dev/v5/transport/headers"
+
 	"golang.org/x/net/http2"
 )
 
