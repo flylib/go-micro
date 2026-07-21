@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/config/source"
-	"go-micro.dev/v5/config/source/file"
+	"github.com/flylib/go-micro/config/source"
+	"github.com/flylib/go-micro/config/source/file"
 )
 
 // createTestFile a local helper to creates a temporary file with the given data

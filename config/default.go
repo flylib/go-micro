@@ -3,11 +3,11 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"go-micro.dev/v5/config/loader"
-	"go-micro.dev/v5/config/loader/memory"
-	"go-micro.dev/v5/config/reader"
-	"go-micro.dev/v5/config/reader/json"
-	"go-micro.dev/v5/config/source"
+	"github.com/flylib/go-micro/config/loader"
+	"github.com/flylib/go-micro/config/loader/memory"
+	"github.com/flylib/go-micro/config/reader"
+	"github.com/flylib/go-micro/config/reader/json"
+	"github.com/flylib/go-micro/config/source"
 	"sync"
 	"time"
 )

@@ -6,10 +6,10 @@ import (
 	"net"
 	"net/http"
 
-	maddr "go-micro.dev/v5/internal/util/addr"
-	mnet "go-micro.dev/v5/internal/util/net"
-	mls "go-micro.dev/v5/internal/util/tls"
-	"go-micro.dev/v5/logger"
+	maddr "github.com/flylib/go-micro/internal/util/addr"
+	mnet "github.com/flylib/go-micro/internal/util/net"
+	mls "github.com/flylib/go-micro/internal/util/tls"
+	"github.com/flylib/go-micro/logger"
 )
 
 type httpTransport struct {

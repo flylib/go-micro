@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/logger"
+	"github.com/flylib/go-micro/logger"
 
-	micro "go-micro.dev/v5"
-	broker "go-micro.dev/v5/broker"
-	rabbitmq "go-micro.dev/v5/broker/rabbitmq"
-	server "go-micro.dev/v5/server"
+	micro "github.com/flylib/go-micro"
+	broker "github.com/flylib/go-micro/broker"
+	rabbitmq "github.com/flylib/go-micro/broker/rabbitmq"
+	server "github.com/flylib/go-micro/server"
 )
 
 type Example struct{}

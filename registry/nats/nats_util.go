@@ -1,6 +1,6 @@
 package nats
 
-import "go-micro.dev/v5/registry"
+import "github.com/flylib/go-micro/registry"
 
 func cp(current []*registry.Service) []*registry.Service {
 	var services []*registry.Service

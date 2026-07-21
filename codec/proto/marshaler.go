@@ -3,9 +3,9 @@ package proto
 import (
 	"bytes"
 
+	"github.com/flylib/go-micro/codec"
 	"github.com/golang/protobuf/proto"
 	"github.com/oxtoacart/bpool"
-	"go-micro.dev/v5/codec"
 )
 
 // create buffer pool with 16 instances each preallocated with 256 bytes.

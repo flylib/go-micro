@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/auth"
+	"github.com/flylib/go-micro/auth"
 )
 
 func TestGenerate(t *testing.T) {

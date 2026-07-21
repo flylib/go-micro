@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flylib/go-micro/store"
 	_ "github.com/go-sql-driver/mysql"
-	"go-micro.dev/v5/store"
 )
 
 var (

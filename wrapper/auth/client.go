@@ -3,9 +3,9 @@ package auth
 import (
 	"context"
 
-	"go-micro.dev/v5/auth"
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/metadata"
+	"github.com/flylib/go-micro/auth"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/metadata"
 )
 
 // ClientOptions for configuring the auth client wrapper

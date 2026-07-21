@@ -1,7 +1,7 @@
 package selector
 
 import (
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 // FilterEndpoint is an endpoint based Select Filter which will

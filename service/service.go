@@ -6,13 +6,13 @@ import (
 	rtime "runtime"
 	"sync"
 
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/cmd"
-	signalutil "go-micro.dev/v5/internal/util/signal"
-	log "go-micro.dev/v5/logger"
-	"go-micro.dev/v5/model"
-	"go-micro.dev/v5/server"
-	"go-micro.dev/v5/store"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/cmd"
+	signalutil "github.com/flylib/go-micro/internal/util/signal"
+	log "github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/model"
+	"github.com/flylib/go-micro/server"
+	"github.com/flylib/go-micro/store"
 )
 
 // Service is the interface for a go-micro service.

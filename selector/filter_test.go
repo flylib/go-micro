@@ -3,7 +3,7 @@ package selector
 import (
 	"testing"
 
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 func TestFilterEndpoint(t *testing.T) {

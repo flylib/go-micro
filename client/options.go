@@ -4,12 +4,12 @@ import (
 	"context"
 	"time"
 
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/codec"
-	"go-micro.dev/v5/logger"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/selector"
-	"go-micro.dev/v5/transport"
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/codec"
+	"github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/selector"
+	"github.com/flylib/go-micro/transport"
 )
 
 var (

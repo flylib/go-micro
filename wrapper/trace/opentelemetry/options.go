@@ -3,8 +3,8 @@ package opentelemetry
 import (
 	"context"
 
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/server"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/server"
 	"go.opentelemetry.io/otel/trace"
 )
 

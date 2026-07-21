@@ -3,7 +3,7 @@ package file
 import (
 	"strings"
 
-	"go-micro.dev/v5/config/encoder"
+	"github.com/flylib/go-micro/config/encoder"
 )
 
 func format(p string, e encoder.Encoder) string {

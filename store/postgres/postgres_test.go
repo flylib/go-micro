@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/flylib/go-micro/store"
 	"github.com/stretchr/testify/assert"
-	"go-micro.dev/v5/store"
 )
 
 type testObj struct {

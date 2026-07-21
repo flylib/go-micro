@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"go-micro.dev/v5/model"
+	"github.com/flylib/go-micro/model"
 )
 
 type User struct {

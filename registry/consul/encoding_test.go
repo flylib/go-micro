@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 func TestEncodingEndpoints(t *testing.T) {

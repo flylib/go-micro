@@ -4,13 +4,13 @@ import (
 	"context"
 	"strings"
 
-	"go-micro.dev/v5/auth"
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/debug/stats"
-	"go-micro.dev/v5/debug/trace"
-	"go-micro.dev/v5/metadata"
-	"go-micro.dev/v5/server"
-	"go-micro.dev/v5/transport/headers"
+	"github.com/flylib/go-micro/auth"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/debug/stats"
+	"github.com/flylib/go-micro/debug/trace"
+	"github.com/flylib/go-micro/metadata"
+	"github.com/flylib/go-micro/server"
+	"github.com/flylib/go-micro/transport/headers"
 )
 
 type fromServiceWrapper struct {

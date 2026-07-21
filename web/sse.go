@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"go-micro.dev/v5/events"
-	log "go-micro.dev/v5/logger"
+	"github.com/flylib/go-micro/events"
+	log "github.com/flylib/go-micro/logger"
 )
 
 // SSEClient represents a connected SSE client

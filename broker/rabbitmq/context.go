@@ -3,8 +3,8 @@ package rabbitmq
 import (
 	"context"
 
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/server"
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/server"
 )
 
 // setSubscribeOption returns a function to setup a context with given value.

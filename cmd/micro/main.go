@@ -2,15 +2,15 @@ package main
 
 import (
 	"embed"
-	"go-micro.dev/v5/cmd"
+	"github.com/flylib/go-micro/cmd"
 
-	_ "go-micro.dev/v5/cmd/micro/api"
-	_ "go-micro.dev/v5/cmd/micro/cli"
-	_ "go-micro.dev/v5/cmd/micro/cli/build"
-	_ "go-micro.dev/v5/cmd/micro/cli/deploy"
-	_ "go-micro.dev/v5/cmd/micro/resource"
-	_ "go-micro.dev/v5/cmd/micro/run"
-	"go-micro.dev/v5/cmd/micro/server"
+	_ "github.com/flylib/go-micro/cmd/micro/api"
+	_ "github.com/flylib/go-micro/cmd/micro/cli"
+	_ "github.com/flylib/go-micro/cmd/micro/cli/build"
+	_ "github.com/flylib/go-micro/cmd/micro/cli/deploy"
+	_ "github.com/flylib/go-micro/cmd/micro/resource"
+	_ "github.com/flylib/go-micro/cmd/micro/run"
+	"github.com/flylib/go-micro/cmd/micro/server"
 )
 
 //go:embed web/styles.css web/main.js web/templates/*

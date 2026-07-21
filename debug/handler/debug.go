@@ -7,11 +7,11 @@ import (
 	"io"
 	"time"
 
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/debug/log"
-	proto "go-micro.dev/v5/debug/proto"
-	"go-micro.dev/v5/debug/stats"
-	"go-micro.dev/v5/debug/trace"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/debug/log"
+	proto "github.com/flylib/go-micro/debug/proto"
+	"github.com/flylib/go-micro/debug/stats"
+	"github.com/flylib/go-micro/debug/trace"
 )
 
 // NewHandler returns an instance of the Debug Handler.

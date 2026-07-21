@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/config/source"
+	"github.com/flylib/go-micro/config/source"
 )
 
 func TestEnv_Read(t *testing.T) {

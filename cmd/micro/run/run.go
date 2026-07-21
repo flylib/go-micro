@@ -17,11 +17,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/cmd"
-	"go-micro.dev/v5/cmd/micro/run/config"
-	"go-micro.dev/v5/cmd/micro/run/watcher"
-	"go-micro.dev/v5/cmd/micro/server"
+	"github.com/flylib/go-micro/cmd"
+	"github.com/flylib/go-micro/cmd/micro/run/config"
+	"github.com/flylib/go-micro/cmd/micro/run/watcher"
+	"github.com/flylib/go-micro/cmd/micro/server"
+
 )
 
 // Color codes for log output

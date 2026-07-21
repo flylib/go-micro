@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"go-micro.dev/v5/codec"
+	"github.com/flylib/go-micro/codec"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )

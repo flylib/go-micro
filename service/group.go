@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"sync"
 
-	signalutil "go-micro.dev/v5/internal/util/signal"
+	signalutil "github.com/flylib/go-micro/internal/util/signal"
 
 )
 

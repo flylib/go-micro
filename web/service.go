@@ -12,15 +12,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/flylib/go-micro"
+	maddr "github.com/flylib/go-micro/internal/util/addr"
+	"github.com/flylib/go-micro/internal/util/backoff"
+	mhttp "github.com/flylib/go-micro/internal/util/http"
+	mnet "github.com/flylib/go-micro/internal/util/net"
+	signalutil "github.com/flylib/go-micro/internal/util/signal"
+	mls "github.com/flylib/go-micro/internal/util/tls"
+	log "github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/registry"
 	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5"
-	maddr "go-micro.dev/v5/internal/util/addr"
-	"go-micro.dev/v5/internal/util/backoff"
-	mhttp "go-micro.dev/v5/internal/util/http"
-	mnet "go-micro.dev/v5/internal/util/net"
-	signalutil "go-micro.dev/v5/internal/util/signal"
-	mls "go-micro.dev/v5/internal/util/tls"
-	l
 )
 
 type service struct {

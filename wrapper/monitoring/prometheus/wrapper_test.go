@@ -5,12 +5,12 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/codec"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/server"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/codec"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/server"
 )
 
 // mockServerRequest is a minimal implementation of server.Request.

@@ -4,7 +4,7 @@ package reader
 import (
 	"time"
 
-	"go-micro.dev/v5/config/source"
+	"github.com/flylib/go-micro/config/source"
 )
 
 // Reader is an interface for merging changesets.

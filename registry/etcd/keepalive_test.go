@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/logger"
+	"github.com/flylib/go-micro/logger"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 

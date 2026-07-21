@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	natsgo "github.com/nats-io/nats.go"
-	"go-micro.dev/v5/config/source"
-	log "go-micro.dev/v5/logger"
+	"github.com/flylib/go-micro/config/source"
+	log "github.com/flylib/go-micro/logger"
+
 )
 
 type nats struct {

@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/flylib/go-micro/logger"
 	"github.com/google/uuid"
-	log "go-micro.dev/v5/logger"
 )
 
 var (

@@ -32,11 +32,11 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/server"
-	"go-micro.dev/v5/transport"
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/server"
+	"github.com/flylib/go-micro/transport"
 )
 
 // Harness provides an in-process test environment for a micro service

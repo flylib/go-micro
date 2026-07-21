@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 func TestStrategies(t *testing.T) {

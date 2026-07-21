@@ -14,14 +14,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-	"go-micro.dev/v5/codec/json"
-	merr "go-micro.dev/v5/errors"
-	maddr "go-micro.dev/v5/internal/util/addr"
-	mnet "go-micro.dev/v5/internal/util/net"
-	mls "go-micro.dev/v5/internal/util/tls"
-	"go-micro.dev/v5/registry"
-
+	"github.com/flylib/go-micro/codec/json"
+	merr "github.com/flylib/go-micro/errors"
+	maddr "github.com/flylib/go-micro/internal/util/addr"
+	mnet "github.com/flylib/go-micro/internal/util/net"
+	mls "github.com/flylib/go-micro/internal/util/tls"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/registry/
 	"golang.org/x/net/http2"
 )
 

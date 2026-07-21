@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	log "github.com/flylib/go-micro/logger"
 	"github.com/miekg/dns"
-	log "go-micro.dev/v5/logger"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
 )

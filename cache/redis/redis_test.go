@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/cache"
+	"github.com/flylib/go-micro/cache"
 )
 
 var (

@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	micro "go-micro.dev/v5"
-	"go-micro.dev/v5/client"
-	grpcclient "go-micro.dev/v5/client/grpc"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/server"
+	micro "github.com/flylib/go-micro"
+	"github.com/flylib/go-micro/client"
+	grpcclient "github.com/flylib/go-micro/client/grpc"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/server"
 )
 
 type SleepRequest struct {

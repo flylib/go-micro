@@ -1,7 +1,7 @@
 package noop
 
 import (
-	"go-micro.dev/v5/debug/log"
+	"github.com/flylib/go-micro/debug/log"
 )
 
 type noop struct{}

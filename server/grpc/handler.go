@@ -3,8 +3,8 @@ package grpc
 import (
 	"reflect"
 
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/server"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/server"
 )
 
 type rpcHandler struct {

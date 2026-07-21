@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"go-micro.dev/v5/store"
+	"github.com/flylib/go-micro/store"
 )
 
 type testObj struct {

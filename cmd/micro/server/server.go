@@ -23,11 +23,11 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/flylib/go-micro/auth"
+	"github.com/flylib/go-micro/cmd"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/store"
 	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/auth"
-	"go-micro.dev/v5/cmd"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/store"
 	"golang.org/x/crypto/bcrypt"
 )
 

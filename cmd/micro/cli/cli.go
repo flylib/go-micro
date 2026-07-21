@@ -7,20 +7,20 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/cmd"
-	"go-micro.dev/v5/codec/bytes"
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/cmd"
+	"github.com/flylib/go-micro/codec/bytes"
+	"github.com/flylib/go-micro/registry"
 
-	"go-micro.dev/v5/cmd/micro/cli/new"
-	"go-micro.dev/v5/cmd/micro/cli/util"
+
+	"github.com/flylib/go-micro/cmd/micro/cli/new"
+	"github.com/flylib/go-micro/cmd/micro/cli/util"
 
 	// Import packages that register commands via init()
-	_ "go-micro.dev/v5/cmd/micro/cli/build"
-	_ "go-micro.dev/v5/cmd/micro/cli/deploy"
-	_ "go-micro.dev/v5/cmd/micro/cli/init"
-	_ "go-micro.dev/v5/cmd/micro/cli/remote"
+	_ "github.com/flylib/go-micro/cmd/micro/cli/build"
+	_ "github.com/flylib/go-micro/cmd/micro/cli/deploy"
+	_ "github.com/flylib/go-micro/cmd/micro/cli/init"
+	_ "github.com/flylib/go-micro/cmd/micro/cli/remote"
 )
 
 var (

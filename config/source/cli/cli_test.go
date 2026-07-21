@@ -5,11 +5,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/flylib/go-micro"
+	"github.com/flylib/go-micro/cmd"
+	"github.com/flylib/go-micro/config"
+	"github.com/flylib/go-micro/config/source"
 	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5"
-	"go-micro.dev/v5/cmd"
-	"go-micro.dev/v5/config"
-	"go-micro.dev/v5/config/source"
 )
 
 func TestCliSourceDefault(t *testing.T) {

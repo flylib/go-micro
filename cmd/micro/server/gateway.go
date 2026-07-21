@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"go-micro.dev/v5/gateway/api"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/store"
+	"github.com/flylib/go-micro/gateway/api"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/store"
 )
 
 // GatewayOptions configures the HTTP gateway (legacy compatibility)

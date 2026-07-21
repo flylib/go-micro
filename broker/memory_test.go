@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"go-micro.dev/v5/broker"
+	"github.com/flylib/go-micro/broker"
 )
 
 func TestMemoryBroker(t *testing.T) {

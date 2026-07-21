@@ -3,7 +3,7 @@ package etcd
 import (
 	"context"
 
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 	"go.uber.org/zap"
 )
 

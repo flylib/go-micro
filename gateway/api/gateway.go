@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"time"
 
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 // Options configures the HTTP API gateway

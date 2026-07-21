@@ -3,19 +3,19 @@ package cmd
 import (
 	"context"
 
-	"go-micro.dev/v5/auth"
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/cache"
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/config"
-	"go-micro.dev/v5/debug/profile"
-	"go-micro.dev/v5/debug/trace"
-	"go-micro.dev/v5/events"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/selector"
-	"go-micro.dev/v5/server"
-	"go-micro.dev/v5/store"
-	"go-micro.dev/v5/transport"
+	"github.com/flylib/go-micro/auth"
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/cache"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/config"
+	"github.com/flylib/go-micro/debug/profile"
+	"github.com/flylib/go-micro/debug/trace"
+	"github.com/flylib/go-micro/events"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/selector"
+	"github.com/flylib/go-micro/server"
+	"github.com/flylib/go-micro/store"
+	"github.com/flylib/go-micro/transport"
 )
 
 type Options struct {

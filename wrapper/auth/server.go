@@ -3,10 +3,10 @@ package auth
 import (
 	"context"
 
-	"go-micro.dev/v5/auth"
-	"go-micro.dev/v5/errors"
-	"go-micro.dev/v5/metadata"
-	"go-micro.dev/v5/server"
+	"github.com/flylib/go-micro/auth"
+	"github.com/flylib/go-micro/errors"
+	"github.com/flylib/go-micro/metadata"
+	"github.com/flylib/go-micro/server"
 )
 
 // HandlerOptions for configuring the auth handler wrapper

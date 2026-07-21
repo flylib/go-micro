@@ -3,8 +3,8 @@ package log
 import (
 	"sync"
 
-	"github.com/google/uuid"
-	"go-micro.dev/v5/internal/util/ring"
+	"github.com/flylib/go-micro/internal/util/ring"
+
 )
 
 // Should stream from OS.

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 // fakeRegistry implements registry.Registry with a configurable

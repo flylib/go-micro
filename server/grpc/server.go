@@ -14,8 +14,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"go-micro.dev/v5/logger"
-	"go-micro.dev/v5/server"
+	"github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/server"
 )
 
 var (

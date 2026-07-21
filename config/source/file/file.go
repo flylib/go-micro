@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"os"
 
-	"go-micro.dev/v5/config/source"
+	"github.com/flylib/go-micro/config/source"
 )
 
 type file struct {

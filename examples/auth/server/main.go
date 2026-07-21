@@ -4,12 +4,12 @@ import (
 	"context"
 	"log"
 
-	"go-micro.dev/v5"
-	"go-micro.dev/v5/auth"
-	"go-micro.dev/v5/auth/noop"
-	authWrapper "go-micro.dev/v5/wrapper/auth"
+	"github.com/flylib/go-micro"
+	"github.com/flylib/go-micro/auth"
+	"github.com/flylib/go-micro/auth/noop"
+	authWrapper "github.com/flylib/go-micro/wrapper/auth"
 
-	pb "go-micro.dev/v5/examples/auth/proto"
+	pb "github.com/flylib/go-micro/examples/auth/proto"
 )
 
 // Greeter implements the Greeter service

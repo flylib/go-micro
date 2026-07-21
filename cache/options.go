@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"go-micro.dev/v5/logger"
+	"github.com/flylib/go-micro/logger"
 )
 
 // Options represents the options for the cache.

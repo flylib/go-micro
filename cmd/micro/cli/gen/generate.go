@@ -8,8 +8,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/cmd"
+	"github.com/flylib/go-micro/cmd"
+
 )
 
 var handlerTemplate = `package handler
@@ -17,7 +17,7 @@ var handlerTemplate = `package handler
 import (
 	"context"
 
-	log "go-micro.dev/v5/logger"
+	log "github.com/flylib/go-micro/logger"
 )
 
 type {{.Name}} struct{}
@@ -43,7 +43,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	log "go-micro.dev/v5/logger"
+	log "github.com/flylib/go-micro/logger"
 )
 
 // {{.Name}}Request is the request for {{.Name}}

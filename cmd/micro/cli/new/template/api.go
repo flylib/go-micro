@@ -42,7 +42,7 @@ import (
 	"net/http"
 	"time"
 
-	log "go-micro.dev/v5/logger"
+	log "github.com/flylib/go-micro/logger"
 
 	pb "{{.Dir}}/proto"
 )

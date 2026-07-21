@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"go-micro.dev/v5/codec"
-	"go-micro.dev/v5/transport"
+	"github.com/flylib/go-micro/codec"
+	"github.com/flylib/go-micro/transport"
 )
 
 // testCodec is a dummy codec that only knows how to encode nil bodies.

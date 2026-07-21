@@ -1,7 +1,7 @@
 package grpc
 
 import (
-	"go-micro.dev/v5/client"
+	"github.com/flylib/go-micro/client"
 )
 
 type grpcEvent struct {

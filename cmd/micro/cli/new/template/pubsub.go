@@ -46,8 +46,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"go-micro.dev/v5/broker"
-	log "go-micro.dev/v5/logger"
+	"github.com/flylib/go-micro/broker"
+	log "github.com/flylib/go-micro/logger"
 
 	pb "{{.Dir}}/proto"
 )
@@ -126,8 +126,8 @@ import (
 	"{{.Dir}}/handler"
 	pb "{{.Dir}}/proto"
 
-	"go-micro.dev/v5"
-	log "go-micro.dev/v5/logger"
+	"github.com/flylib/go-micro"
+	log "github.com/flylib/go-micro/logger"
 )
 
 func main() {

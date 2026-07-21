@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/codec/json"
+	"github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/registry"
 	natsp "github.com/nats-io/nats.go"
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/codec/json"
-	"go-micro.dev/v5/logger"
-	"go-micro.dev/v5/registry"
 )
 
 type natsBroker struct {

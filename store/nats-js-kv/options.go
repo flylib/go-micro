@@ -3,8 +3,8 @@ package natsjskv
 import (
 	"time"
 
+	"github.com/flylib/go-micro/store"
 	"github.com/nats-io/nats.go"
-	"go-micro.dev/v5/store"
 )
 
 // store.Option.

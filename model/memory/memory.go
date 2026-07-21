@@ -3,7 +3,7 @@
 package memory
 
 import (
-	"go-micro.dev/v5/model"
+	"github.com/flylib/go-micro/model"
 )
 
 // New creates a new in-memory model.

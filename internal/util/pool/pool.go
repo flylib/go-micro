@@ -4,7 +4,7 @@ package pool
 import (
 	"time"
 
-	"go-micro.dev/v5/transport"
+	"github.com/flylib/go-micro/transport"
 )
 
 // Pool is an interface for connection pooling.

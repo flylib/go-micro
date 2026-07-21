@@ -3,8 +3,8 @@ package consul
 import (
 	"testing"
 
+	"github.com/flylib/go-micro/registry"
 	"github.com/hashicorp/consul/api"
-	"go-micro.dev/v5/registry"
 )
 
 func TestHealthyServiceHandler(t *testing.T) {

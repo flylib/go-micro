@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
-	"go-micro.dev/v5/codec"
-	"go-micro.dev/v5/logger"
+	"github.com/flylib/go-micro/codec"
+	"github.com/flylib/go-micro/logger"
 )
 
 var (

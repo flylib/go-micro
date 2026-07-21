@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/config/source"
-	"go-micro.dev/v5/config/source/env"
-	"go-micro.dev/v5/config/source/file"
-	"go-micro.dev/v5/config/source/memory"
+	"github.com/flylib/go-micro/config/source"
+	"github.com/flylib/go-micro/config/source/env"
+	"github.com/flylib/go-micro/config/source/file"
+	"github.com/flylib/go-micro/config/source/memory"
 )
 
 func createFileForIssue18(t *testing.T, content string) *os.File {

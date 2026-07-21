@@ -9,9 +9,9 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	util "go-micro.dev/v5/intern
-	log "go-micro.dev/v5/logger"
-	"go-micro.dev/v5/registry"
+	util "github.com/flylib/go-micro/intern
+	log "github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/registry"
 )
 
 // Cache is the registry cache interface.

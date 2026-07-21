@@ -6,9 +6,9 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/pkg/errors"
-	log "go-micro.dev/v5/logger"
-	"go-micro.dev/v5/store"
+	log "github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/store"
+
 )
 
 var (

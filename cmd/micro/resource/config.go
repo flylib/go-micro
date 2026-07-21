@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/flylib/go-micro/config"
+	"github.com/flylib/go-micro/config/source/env"
 	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/config"
-	"go-micro.dev/v5/config/source/env"
 )
 
 // configCommand exposes the config interface: get, dump.

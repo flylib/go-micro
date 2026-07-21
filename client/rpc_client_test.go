@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"go-micro.dev/v5/errors"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/selector"
+	"github.com/flylib/go-micro/errors"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/selector"
 )
 
 const (

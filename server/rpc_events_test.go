@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/registry"
 )
 
 // TestSubscriberNoDuplicates verifies that when multiple subscribers are registered

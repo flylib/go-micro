@@ -3,11 +3,11 @@ package consul
 import (
 	"sync"
 
+	mnet "github.com/flylib/go-micro/internal/util/net"
+	regutil "github.com/flylib/go-micro/internal/util/registry"
+	"github.com/flylib/go-micro/registry"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/api/watch"
-	mnet "go-micro.dev/v5/internal/util/net"
-	regutil "go-micro.dev/v5/internal/util/registry"
-	"go-micro.dev/v5/registry"
 )
 
 type consulWatcher struct {

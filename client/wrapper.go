@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 // CallFunc represents the individual call func.

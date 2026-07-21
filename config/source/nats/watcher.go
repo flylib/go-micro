@@ -3,9 +3,9 @@ package nats
 import (
 	"time"
 
+	"github.com/flylib/go-micro/config/encoder"
+	"github.com/flylib/go-micro/config/source"
 	natsgo "github.com/nats-io/nats.go"
-	"go-micro.dev/v5/config/encoder"
-	"go-micro.dev/v5/config/source"
 )
 
 type watcher struct {

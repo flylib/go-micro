@@ -3,7 +3,7 @@ package logger
 import (
 	"testing"
 
-	dlog "go-micro.dev/v5/debug/log"
+	dlog "github.com/flylib/go-micro/debug/log"
 )
 
 func TestDebugLogBuffer(t *testing.T) {

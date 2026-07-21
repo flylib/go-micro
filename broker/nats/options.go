@@ -3,8 +3,8 @@ package nats
 import (
 	"time"
 
+	"github.com/flylib/go-micro/broker"
 	natsp "github.com/nats-io/nats.go"
-	"go-micro.dev/v5/broker"
 )
 
 type optionsKey struct{}

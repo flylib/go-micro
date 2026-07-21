@@ -5,18 +5,18 @@ import (
 	"os"
 	"strings"
 
-	natslib "github.com/nats-io/nats.go"
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/broker/nats"
-	"go-micro.dev/v5/events"
-	nevents "go-micro.dev/v5/events/natsjs"
-	"go-micro.dev/v5/registry"
-	nreg "go-micro.dev/v5/registry/nats"
-	"go-micro.dev/v5/store"
-	nstore "go-micro.dev/v5/store/nats-js-kv"
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/broker/nats"
+	"github.com/flylib/go-micro/events"
+	nevents "github.com/flylib/go-micro/events/natsjs"
+	"github.com/flylib/go-micro/registry"
+	nreg "github.com/flylib/go-micro/registry/nats"
+	"github.com/flylib/go-micro/store"
+	nstore "github.com/flylib/go-micro/store/nats-js-kv"
 
-	"go-micro.dev/v5/transport"
-	ntx "go-micro.dev/v5/transport/nats"
+
+	"github.com/flylib/go-micro/transport"
+	ntx "github.com/flylib/go-micro/transport/nats"
 )
 
 type Profile struct {

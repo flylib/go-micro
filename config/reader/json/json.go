@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"dario.cat/mergo"
-	"go-micro.dev/v5/config/encoder"
-	"go-micro.dev/v5/config/encoder/json"
-	"go-micro.dev/v5/config/reader"
-	"go-micro.dev/v5/config/source"
+	"github.com/flylib/go-micro/config/encoder"
+	"github.com/flylib/go-micro/config/encoder/json"
+	"github.com/flylib/go-micro/config/reader"
+	"github.com/flylib/go-micro/config/source"
 )
 
 type jsonReader struct {

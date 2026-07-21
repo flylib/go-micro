@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/flylib/go-micro/transport"
 	"github.com/nats-io/nats.go"
-	"go-micro.dev/v5/transport"
 )
 
 type optionsKey struct{}

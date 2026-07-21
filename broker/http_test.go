@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/registry"
 	"github.com/google/uuid"
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/registry"
 )
 
 var (

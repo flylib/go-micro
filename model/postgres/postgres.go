@@ -12,7 +12,7 @@ import (
 
 	_ "github.com/lib/pq"
 
-	"go-micro.dev/v5/model"
+	"github.com/flylib/go-micro/model"
 )
 
 type postgresModel struct {

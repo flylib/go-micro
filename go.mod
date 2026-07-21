@@ -1,4 +1,4 @@
-module go-micro.dev/v5
+module github.com/flylib/go-micro
 
 go 1.24
 
@@ -22,7 +22,6 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.34
-	github.com/micro/plugins/v5/auth/jwt v0.0.0-20250502062951-be3f35ce6464
 	github.com/miekg/dns v1.1.50
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/nats-io/nats-server/v2 v2.11.3
@@ -65,6 +64,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fatih/color v1.16.0 // indirect
+	github.com/flylib/go-micro/plugins v0.0.0-00010101000000-000000000000
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -115,3 +115,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/flylib/go-micro/plugins => ./plugins

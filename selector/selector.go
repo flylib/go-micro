@@ -4,7 +4,7 @@ package selector
 import (
 	"errors"
 
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 // Selector builds on the registry as a mechanism to pick nodes

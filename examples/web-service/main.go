@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"go-micro.dev/v5/web"
+	"github.com/flylib/go-micro/web"
 )
 
 type User struct {

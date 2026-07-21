@@ -13,17 +13,17 @@ import (
 
 	"github.com/pkg/errors"
 
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/codec"
-	"go-micro.dev/v5/internal/util/addr"
-	"go-micro.dev/v5/internal/util/backoff"
-	mnet "go-micro.dev/v5/internal/util/net"
-	"go-micro.dev/v5/internal/util/socket"
-	log "go-micro.dev/v5/logger"
-	"go-micro.dev/v5/metadata"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/transport"
-	"go-micro.dev/v5/transport/headers"
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/codec"
+	"github.com/flylib/go-micro/internal/util/addr"
+	"github.com/flylib/go-micro/internal/util/backoff"
+	mnet "github.com/flylib/go-micro/internal/util/net"
+	"github.com/flylib/go-micro/internal/util/socket"
+	log "github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/metadata"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/transport"
+	"github.com/flylib/go-micro/transport/headers"
 )
 
 type rpcServer struct {

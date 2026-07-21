@@ -12,11 +12,9 @@ import (
 	"sync"
 	"time"
 
-	consul "github.com/hashicorp/consul/api"
-	hash "github.com/mitchellh/hashstructure"
-	mnet "go-micro.dev/v5/internal/util/net"
-	mtls "go-micro.dev/v5/internal/util/tls"
-
+	mnet "github.com/flylib/go-micro/internal/util/net"
+	mtls "github.com/flylib/go-micro/internal/util/tls"
+	"github.com/flylib/go-micro/re
 )
 
 type consulRegistry struct {

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flylib/go-micro"
+	"github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/web"
 	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5"
-	"go-micro.dev/v5/logger"
-	"go-micro.dev/v5/web"
 )
 
 func TestWeb(t *testing.T) {

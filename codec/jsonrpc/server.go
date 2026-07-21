@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"go-micro.dev/v5/codec"
+	"github.com/flylib/go-micro/codec"
 )
 
 type serverCodec struct {

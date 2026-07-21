@@ -3,7 +3,7 @@ module example
 go 1.24
 
 require (
-	go-micro.dev/v5 v5.16.0
+	github.com/flylib/go-micro v1.0.0
 	google.golang.org/grpc v1.71.1
 	google.golang.org/protobuf v1.36.6
 )
@@ -69,4 +69,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
 )
 
-replace go-micro.dev/v5 => ../..
+replace github.com/flylib/go-micro => ../..

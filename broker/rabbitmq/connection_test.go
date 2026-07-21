@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/flylib/go-micro/logger"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"go-micro.dev/v5/logger"
 )
 
 func TestNewRabbitMQConnURL(t *testing.T) {

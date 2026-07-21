@@ -10,19 +10,19 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/codec"
-	raw "go-micro.dev/v5/codec/bytes"
-	merrors "go-micro.dev/v5/errors"
-	"go-micro.dev/v5/internal/util/buf"
-	"go-micro.dev/v5/internal/util/net"
-	"go-micro.
-	log "go-micro.dev/v5/logger"
-	"go-micro.dev/v5/metadata"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/selector"
-	"go-micro.dev/v5/transport"
-	"go-micro.dev/v5/transport/headers"
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/codec"
+	raw "github.com/flylib/go-micro/codec/bytes"
+	merrors "github.com/flylib/go-micro/errors"
+	"github.com/flylib/go-micro/internal/util/buf"
+	"github.com/flylib/go-micro/internal/util/net"
+	"github.com/flylib/go-micro/internal/util/pool"
+	log "github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/metadata"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/selector"
+	"github.com/flylib/go-micro/transport"
+	"github.com/flylib/go-micro/transport/headers"
 )
 
 const (

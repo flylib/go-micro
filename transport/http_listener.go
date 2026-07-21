@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	log "go-micro.dev/v5/logger"
+	log "github.com/flylib/go-micro/logger"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"

@@ -1,8 +1,8 @@
 package reader
 
 import (
-	"go-micro.dev/v5/config/encoder"
-	"go-micro.dev/v5/config/encoder/json"
+	"github.com/flylib/go-micro/config/encoder"
+	"github.com/flylib/go-micro/config/encoder/json"
 )
 
 type Options struct {

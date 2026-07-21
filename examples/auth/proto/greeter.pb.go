@@ -6,8 +6,8 @@ package greeter
 import (
 	context "context"
 	fmt "fmt"
-	client "go-micro.dev/v5/client"
-	server "go-micro.dev/v5/server"
+	client "github.com/flylib/go-micro/client"
+	server "github.com/flylib/go-micro/server"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.

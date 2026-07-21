@@ -12,7 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"go-micro.dev/v5/internal/util/buf"
+	"github.com/flylib/go-micro/internal/util/buf"
 
 )
 

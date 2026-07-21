@@ -4,17 +4,17 @@ import (
 	"bytes"
 	errs "errors"
 
-	"go-micro.dev/v5/codec"
-	raw "go-micro.dev/v5/codec/bytes"
-	"go-micro.dev/v5/codec/grpc"
-	"go-micro.dev/v5/codec/json"
-	"go-micro.dev/v5/codec/jsonrpc"
-	"go-micro.dev/v5/codec/proto"
-	"go-micro.dev/v5/codec/protorpc"
-	"go-micro.dev/v5/errors"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/transport"
-	"go-micro.dev/v5/transport/headers"
+	"github.com/flylib/go-micro/codec"
+	raw "github.com/flylib/go-micro/codec/bytes"
+	"github.com/flylib/go-micro/codec/grpc"
+	"github.com/flylib/go-micro/codec/json"
+	"github.com/flylib/go-micro/codec/jsonrpc"
+	"github.com/flylib/go-micro/codec/proto"
+	"github.com/flylib/go-micro/codec/protorpc"
+	"github.com/flylib/go-micro/errors"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/transport"
+	"github.com/flylib/go-micro/transport/headers"
 )
 
 const (

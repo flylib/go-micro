@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"log"
 
-	"go-micro.dev/v5"
+	"github.com/flylib/go-micro"
 )
 
 // -- Users service --

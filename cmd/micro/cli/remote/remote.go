@@ -10,8 +10,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/cmd"
+	"github.com/flylib/go-micro/cmd"
+
 )
 
 const defaultRemotePath = "/opt/micro"

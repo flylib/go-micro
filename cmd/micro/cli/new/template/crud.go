@@ -85,7 +85,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	log "go-micro.dev/v5/logger"
+	log "github.com/flylib/go-micro/logger"
 
 	pb "{{.Dir}}/proto"
 )

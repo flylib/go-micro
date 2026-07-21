@@ -7,9 +7,9 @@ import (
 
 	"log"
 
+	"github.com/flylib/go-micro/server"
+	"github.com/flylib/go-micro/transport"
 	"github.com/nats-io/nats.go"
-	"go-micro.dev/v5/server"
-	"go-micro.dev/v5/transport"
 )
 
 var addrTestCases = []struct {

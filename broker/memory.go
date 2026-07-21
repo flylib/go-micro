@@ -6,10 +6,10 @@ import (
 	"math/rand"
 	"sync"
 
+	maddr "github.com/flylib/go-micro/internal/util/addr"
+	mnet "github.com/flylib/go-micro/internal/util/net"
+	log "github.com/flylib/go-micro/logger"
 	"github.com/google/uuid"
-	maddr "go-micro.dev/v5/internal/util/addr"
-	mnet "go-micro.dev/v5/internal/util/net"
-	log "go-micro.dev/v5/logger"
 )
 
 type memoryBroker struct {

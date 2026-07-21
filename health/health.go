@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 // Status represents the health status of a check or the overall system

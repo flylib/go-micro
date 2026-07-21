@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/metadata"
-	"go-micro.dev/v5/transport/headers"
+	"github.com/flylib/go-micro/metadata"
+	"github.com/flylib/go-micro/transport/headers"
 )
 
 func TestCache(t *testing.T) {

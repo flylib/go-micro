@@ -58,8 +58,8 @@ import (
 	"io"
 	"os"
 
-	"go-micro.dev/v5/cmd/protoc-gen-micro/generator"
-	_ "go-micro.dev/v5/cmd/protoc-gen-micro/plugin/micro"
+	"github.com/flylib/go-micro/cmd/protoc-gen-micro/generator"
+	_ "github.com/flylib/go-micro/cmd/protoc-gen-micro/plugin/micro"
 	"google.golang.org/protobuf/proto"
 )
 

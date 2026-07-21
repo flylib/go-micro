@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/logger"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/logger"
 )
 
 // Options contains configuration for the Store.

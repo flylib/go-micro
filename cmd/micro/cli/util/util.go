@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	merrors "github.com/flylib/go-micro/errors"
 	"github.com/urfave/cli/v2"
-	merrors "go-micro.dev/v5/errors"
 )
 
 type Exec func(*cli.Context, []string) ([]byte, error)

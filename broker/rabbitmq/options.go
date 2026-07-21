@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/server"
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/server"
 )
 
 type durableQueueKey struct{}

@@ -1,7 +1,7 @@
 package registry
 
 import (
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 func addNodes(old, neu []*registry.Node) []*registry.Node {

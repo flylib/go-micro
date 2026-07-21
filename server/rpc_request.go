@@ -3,9 +3,9 @@ package server
 import (
 	"bytes"
 
-	"go-micro.dev/v5/codec"
-	"go-micro.dev/v5/internal/util/buf"
-
+	"github.com/flylib/go-micro/codec"
+	"github.com/flylib/go-micro/internal/util/buf"
+	"github.com/flylib/go-micro/transport"
 )
 
 type rpcRequest struct {

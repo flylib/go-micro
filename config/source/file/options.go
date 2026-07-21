@@ -4,7 +4,7 @@ import (
 	"context"
 	"io/fs"
 
-	"go-micro.dev/v5/config/source"
+	"github.com/flylib/go-micro/config/source"
 )
 
 type filePathKey struct{}

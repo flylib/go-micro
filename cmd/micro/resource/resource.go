@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/flylib/go-micro/cmd"
 	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/cmd"
 )
 
 // commandFunc returns a cli.Command for a single core interface. Add a

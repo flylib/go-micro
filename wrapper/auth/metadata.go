@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	"go-micro.dev/v5/auth"
-	"go-micro.dev/v5/metadata"
+	"github.com/flylib/go-micro/auth"
+	"github.com/flylib/go-micro/metadata"
 )
 
 const (

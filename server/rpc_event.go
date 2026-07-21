@@ -1,9 +1,9 @@
 package server
 
 import (
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/transport"
-	"go-micro.dev/v5/transport/headers"
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/transport"
+	"github.com/flylib/go-micro/transport/headers"
 )
 
 // event is a broker event we handle on the server transport.

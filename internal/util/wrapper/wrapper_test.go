@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	"go-micro.dev/v5/auth"
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/metadata"
-	"go-micro.dev/v5/server"
+	"github.com/flylib/go-micro/auth"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/metadata"
+	"github.com/flylib/go-micro/server"
 )
 
 func TestWrapper(t *testing.T) {

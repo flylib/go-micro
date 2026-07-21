@@ -7,7 +7,7 @@ import (
 	"{{.Dir}}/handler"
 	pb "{{.Dir}}/proto"
 
-	"go-micro.dev/v5"
+	"github.com/flylib/go-micro"
 )
 
 func main() {

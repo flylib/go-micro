@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/server"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/server"
 )
 
 // NewHandlerWrapper returns a server.HandlerWrapper that records Prometheus

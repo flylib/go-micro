@@ -3,7 +3,7 @@ package config
 import (
 	"time"
 
-	"go-micro.dev/v5/config/reader"
+	"github.com/flylib/go-micro/config/reader"
 )
 
 type value struct{}

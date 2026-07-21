@@ -7,12 +7,12 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"go-micro.dev/v5/broker"
-	"go-micro.dev/v5/errors"
-	"go-micro.dev/v5/logger"
-	"go-micro.dev/v5/metadata"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/server"
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/errors"
+	"github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/metadata"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/server"
 )
 
 const (

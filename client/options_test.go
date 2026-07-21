@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"go-micro.dev/v5/transport"
+	"github.com/flylib/go-micro/transport"
 )
 
 func TestCallOptions(t *testing.T) {

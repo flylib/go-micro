@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/codec"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/codec"
 )
 
 type grpcRequest struct {

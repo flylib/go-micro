@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/store"
 	"github.com/pkg/errors"
-	"go-micro.dev/v5/logger"
-	"go-micro.dev/v5/store"
 )
 
 const joinKey = "/"

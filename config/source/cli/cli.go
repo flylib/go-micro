@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"dario.cat/mergo"
-	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/cmd"
-	"go-micro.dev/v5/config/source"
+	"github.com/flylib/go-micro/cmd"
+	"github.com/flylib/go-micro/config/source"
+
 )
 
 type cliSource struct {

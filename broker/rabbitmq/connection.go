@@ -10,9 +10,8 @@ import (
 	"sync"
 	"time"
 
-	amqp "github.com/rabbitmq/amqp091-go"
-	mtls "go-micro.dev/v5/internal/util/tls"
-
+	mtls "github.com/flylib/go-micro/internal/util/tls"
+	"
 )
 
 type MQExchangeType string

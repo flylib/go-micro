@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flylib/go-micro/registry"
 	consul "github.com/hashicorp/consul/api"
-	"go-micro.dev/v5/registry"
 )
 
 type mockRegistry struct {

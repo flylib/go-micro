@@ -8,7 +8,7 @@ import (
 	"runtime/pprof"
 	"sync"
 
-	"go-micro.dev/v5/debug/profile"
+	"github.com/flylib/go-micro/debug/profile"
 )
 
 type profiler struct {

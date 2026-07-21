@@ -3,7 +3,7 @@ package token
 import (
 	"time"
 
-	"go-micro.dev/v5/store"
+	"github.com/flylib/go-micro/store"
 )
 
 type Options struct {

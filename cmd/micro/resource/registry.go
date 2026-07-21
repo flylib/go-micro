@@ -3,8 +3,8 @@ package resource
 import (
 	"fmt"
 
+	"github.com/flylib/go-micro/registry"
 	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/registry"
 )
 
 // registryCommand exposes the registry interface: list, get, watch.

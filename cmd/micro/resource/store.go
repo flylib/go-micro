@@ -3,8 +3,8 @@ package resource
 import (
 	"fmt"
 
+	"github.com/flylib/go-micro/store"
 	"github.com/urfave/cli/v2"
-	"go-micro.dev/v5/store"
 )
 
 // storeCommand exposes the store interface: read, write, delete, list.

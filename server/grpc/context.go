@@ -3,7 +3,7 @@ package grpc
 import (
 	"context"
 
-	"go-micro.dev/v5/server"
+	"github.com/flylib/go-micro/server"
 )
 
 func setServerOption(k, v interface{}) server.Option {

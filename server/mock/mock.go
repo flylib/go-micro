@@ -4,8 +4,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/google/uuid"
-	"go-micro.dev/v5/server"
+	"github.com/flylib/go-micro/server"
+
 )
 
 type MockServer struct {

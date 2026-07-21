@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"time"
 
-	"go-micro.dev/v5/logger"
+	"github.com/flylib/go-micro/logger"
 )
 
 type Options struct {

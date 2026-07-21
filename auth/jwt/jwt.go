@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	jwtToken "github.com/micro/plugins/v5/auth/jwt/token"
-	"go-micro.dev/v5/auth"
-	"go-micro.dev/v5/cmd"
+	"github.com/flylib/go-micro/auth"
+	"github.com/flylib/go-micro/cmd"
+
 )
 
 func init() {

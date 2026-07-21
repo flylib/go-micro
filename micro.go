@@ -4,9 +4,9 @@ package micro
 import (
 	"context"
 
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/server"
-	"go-micro.dev/v5/service"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/server"
+	"github.com/flylib/go-micro/service"
 )
 
 type serviceKey struct{}

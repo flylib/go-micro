@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"sync"
 
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 // Random is a random strategy algorithm for node selection.

@@ -6,7 +6,7 @@ import (
 	"io"
 	"sync"
 
-	"go-micro.dev/v5/codec"
+	"github.com/flylib/go-micro/codec"
 )
 
 // Implements the streamer interface.

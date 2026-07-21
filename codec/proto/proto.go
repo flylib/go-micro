@@ -4,8 +4,8 @@ package proto
 import (
 	"io"
 
+	"github.com/flylib/go-micro/codec"
 	"github.com/golang/protobuf/proto"
-	"go-micro.dev/v5/codec"
 )
 
 type Codec struct {

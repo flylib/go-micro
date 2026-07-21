@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nats-io/nats.go"
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
+
 )
 
 type natsRegistry struct {

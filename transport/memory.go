@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	maddr "go-micro.dev/v5/internal/util/addr"
-	mnet "go-micro.dev/v5/internal/util/net"
+	maddr "github.com/flylib/go-micro/internal/util/addr"
+	mnet "github.com/flylib/go-micro/internal/util/net"
 )
 
 type memorySocket struct {

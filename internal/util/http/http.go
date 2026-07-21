@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strings"
 
-	"go-micro.dev/v5/logger"
-	"go-micro.dev/v5/metadata"
-	"go-micro.dev/v5/registry"
-	"go-micro.dev/v5/selector"
+	"github.com/flylib/go-micro/logger"
+	"github.com/flylib/go-micro/metadata"
+	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/selector"
 )
 
 // Write sets the status and body on a http ResponseWriter.

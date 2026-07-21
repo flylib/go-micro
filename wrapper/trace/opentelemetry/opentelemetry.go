@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"go-micro.dev/v5/metadata"
+	"github.com/flylib/go-micro/metadata"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/propagation"

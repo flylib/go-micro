@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/registry"
 )
 
 func encode(buf []byte) string {

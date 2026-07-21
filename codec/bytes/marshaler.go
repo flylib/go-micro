@@ -1,7 +1,7 @@
 package bytes
 
 import (
-	"go-micro.dev/v5/codec"
+	"github.com/flylib/go-micro/codec"
 )
 
 type Marshaler struct{}

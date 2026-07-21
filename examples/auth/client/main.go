@@ -6,13 +6,13 @@ import (
 	"log"
 	"os"
 
-	"go-micro.dev/v5"
-	"go-micro.dev/v5/auth"
-	"go-micro.dev/v5/auth/noop"
-	"go-micro.dev/v5/client"
-	authWrapper "go-micro.dev/v5/wrapper/auth"
+	"github.com/flylib/go-micro"
+	"github.com/flylib/go-micro/auth"
+	"github.com/flylib/go-micro/auth/noop"
+	"github.com/flylib/go-micro/client"
+	authWrapper "github.com/flylib/go-micro/wrapper/auth"
 
-	pb "go-micro.dev/v5/examples/auth/proto"
+	pb "github.com/flylib/go-micro/examples/auth/proto"
 )
 
 func main() {

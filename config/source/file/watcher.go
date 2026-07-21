@@ -6,8 +6,8 @@ package file
 import (
 	"os"
 
+	"github.com/flylib/go-micro/config/source"
 	"github.com/fsnotify/fsnotify"
-	"go-micro.dev/v5/config/source"
 )
 
 type watcher struct {

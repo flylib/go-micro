@@ -5,8 +5,9 @@ package secretbox
 import (
 	"crypto/rand"
 
+	"github.com/flylib/go-micro/config/secrets"
 	"github.com/pkg/errors"
-	"go-micro.dev/v5/config/secrets"
+	"golang.org
 	"golang.org/x/crypto/nacl/secretbox"
 )
 

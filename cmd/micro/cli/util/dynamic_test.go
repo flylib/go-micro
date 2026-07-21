@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"go-micro.dev/v5/metadata"
-	goregistry "go-micro.dev/v5/registry"
+	"github.com/flylib/go-micro/metadata"
+	goregistry "github.com/flylib/go-micro/registry"
 )
 
 type parseCase struct {

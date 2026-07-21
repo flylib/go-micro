@@ -4,7 +4,7 @@ package client
 import (
 	"context"
 
-	"go-micro.dev/v5/codec"
+	"github.com/flylib/go-micro/codec"
 )
 
 var (

@@ -1,6 +1,6 @@
 // Package test implements a testing framwork, and provides default tests.
 //
-// Deprecated: This package is deprecated in favor of go-micro.dev/v5/testing.
+// Deprecated: This package is deprecated in favor of github.com/flylib/go-micro/testing.
 // Use the testing.Harness for a cleaner, more maintainable approach.
 // See test/DEPRECATED.md for migration guide.
 package test
@@ -14,11 +14,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"go-micro.dev/v5"
-	"go-micro.dev/v5/client"
-	"go-micro.dev/v5/debug/handler"
+	"github.com/flylib/go-micro"
+	"github.com/flylib/go-micro/client"
+	"github.com/flylib/go-micro/debug/handler"
 
-	pb "go-micro.dev/v5/debug/proto"
+	pb "github.com/flylib/go-micro/debug/proto"
 )
 
 var (

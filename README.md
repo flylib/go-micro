@@ -1,4 +1,4 @@
-# Go Micro [![Go.Dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/go-micro.dev/v5?tab=doc)
+# Go Micro [![Go.Dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/flylib/go-micro?tab=doc)
 
 Go Micro is a pluggable framework for building microservices in Go.
 
@@ -94,7 +94,7 @@ service := micro.New("greeter",
 Install the CLI:
 
 ```bash
-go install go-micro.dev/v5/cmd/micro@latest
+go install github.com/flylib/go-micro/cmd/micro@latest
 ```
 
 Scaffold a service, run it, call it:
@@ -130,7 +130,7 @@ package main
 import (
     "context"
 
-    "go-micro.dev/v5"
+    "github.com/flylib/go-micro"
 )
 
 type Request struct {
@@ -195,10 +195,10 @@ Swap any abstraction by importing a backend and passing it as an option — the 
 
 ```go
 import (
-    "go-micro.dev/v5"
-    "go-micro.dev/v5/registry/consul"
-    "go-micro.dev/v5/transport/grpc"
-    "go-micro.dev/v5/broker/nats"
+    "github.com/flylib/go-micro"
+    "github.com/flylib/go-micro/registry/consul"
+    "github.com/flylib/go-micro/transport/grpc"
+    "github.com/flylib/go-micro/broker/nats"
 )
 
 service := micro.New("orders",
@@ -261,4 +261,4 @@ Backends: memory (default), SQLite, Postgres.
 
 See [all examples](examples/README.md).
 
-Package reference: https://pkg.go.dev/go-micro.dev/v5
+Package reference: https://pkg.go.dev/github.com/flylib/go-micro

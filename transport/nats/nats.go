@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nats-io/nats.go"
-	"go-micro.dev/v5/codec/json"
-	"go-micro.dev/v5/server"
-	"go-micro.dev/v5/transport"
+	"github.com/flylib/go-micro/codec/json"
+	"github.com/flylib/go-micro/server"
+	"github.com/flylib/go-micro/transport"
+
 )
 
 type ntport struct {

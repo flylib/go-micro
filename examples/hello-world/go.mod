@@ -2,7 +2,7 @@ module example
 
 go 1.24
 
-require go-micro.dev/v5 v5.16.0
+require github.com/flylib/go-micro v1.0.0
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
@@ -67,4 +67,4 @@ require (
 	google.golang.org/protobuf v1.36.6 // indirect
 )
 
-replace go-micro.dev/v5 => ../..
+replace github.com/flylib/go-micro => ../..

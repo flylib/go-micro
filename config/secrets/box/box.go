@@ -4,8 +4,9 @@ package box
 import (
 	"crypto/rand"
 
+	"github.com/flylib/go-micro/config/secrets"
 	"github.com/pkg/errors"
-	"go-micro.dev/v5/config/secrets"
+	naclbox "gola
 	naclbox "golang.org/x/crypto/nacl/box"
 )
 
