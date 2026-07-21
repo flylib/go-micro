@@ -15,7 +15,6 @@ import (
 	raw "github.com/flylib/go-micro/codec/bytes"
 	merrors "github.com/flylib/go-micro/errors"
 	"github.com/flylib/go-micro/internal/util/buf"
-	"github.com/flylib/go-micro/internal/util/net"
 	"github.com/flylib/go-micro/internal/util/pool"
 	log "github.com/flylib/go-micro/logger"
 	"github.com/flylib/go-micro/metadata"
@@ -23,6 +22,7 @@ import (
 	"github.com/flylib/go-micro/selector"
 	"github.com/flylib/go-micro/transport"
 	"github.com/flylib/go-micro/transport/headers"
+	"github.com/flylib/go-micro/util/net"
 )
 
 const (

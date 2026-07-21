@@ -10,10 +10,7 @@ import (
 
 	"github.com/flylib/go-micro/auth"
 	"github.com/flylib/go-micro/broker"
-	nbroker "github.com/flylib/go-micro/broker/nats"
-	rabbit "github.com/flylib/go-micro/broker/rabbitmq"
 	"github.com/flylib/go-micro/cache"
-	"github.com/flylib/go-micro/cache/redis"
 	"github.com/flylib/go-micro/client"
 	"github.com/flylib/go-micro/config"
 	"github.com/flylib/go-micro/debug/profile"
@@ -23,19 +20,12 @@ import (
 	"github.com/flylib/go-micro/events"
 	"github.com/flylib/go-micro/logger"
 	"github.com/flylib/go-micro/registry"
-	"github.com/flylib/go-micro/registry/consul"
-	"github.com/flylib/go-micro/registry/etcd"
-	"github.com/flylib/go-micro/registry/nats"
 	"github.com/flylib/go-micro/selector"
 	"github.com/flylib/go-micro/server"
 	mprofile "github.com/flylib/go-mic
 	"github.com/flylib/go-micro/store"
-	"github.com/flylib/go-micro/store/mysql"
-	natsjskv "github.com/flylib/go-micro/store/nats-js-kv"
-	postgres "github.com/flylib/go-micro/store/postgres"
 	"github.com/flylib/go-micro/transport"
-	ntransport "github.com/flylib/go-micro/transport/nats"
-r
+o
 )
 
 type Cmd interface {
@@ -136,7 +126,7 @@ var (
 		&cli.StringFlag{
 			Name:    "broker",
 			EnvVars: []string{"MICRO_BROKER"},
-			Usage:   "Broker for pub/sub. http, nats, rabbitmq",
+			Usage:   "Broker for pub/sub. e.g. http, memory (plugins: nats, rabbitmq)",
 		},
 		&cli.StringFlag{
 			Name:    "broker_address",
@@ -247,35 +237,25 @@ var (
 	}
 
 	DefaultBrokers = map[string]func(...broker.Option) broker.Broker{
-		"memory":   broker.NewMemoryBroker,
-		"http":     broker.NewHttpBroker,
-		"nats":     nbroker.NewNatsBroker,
-		"rabbitmq": rabbit.NewBroker,
+		"memory": broker.NewMemoryBroker,
+		"http":   broker.NewHttpBroker,
 	}
 
 	DefaultClients = map[string]func(...client.Option) client.Client{}
 
 	DefaultRegistries = map[string]func(...registry.Option) registry.Registry{
-		"consul": consul.NewConsulRegistry,
 		"memory": registry.NewMemoryRegistry,
-		"nats":   nats.NewNatsRegistry,
 		"mdns":   registry.NewMDNSRegistry,
-		"etcd":   etcd.NewEtcdRegistry,
 	}
 
 	DefaultSelectors = map[string]func(...selector.Option) selector.Selector{}
 
 	DefaultServers = map[string]func(...server.Option) server.Server{}
 
-	DefaultTransports = map[string]func(...transport.Option) transport.Transport{
-		"nats": ntransport.NewTransport,
-	}
+	DefaultTransports = map[string]func(...transport.Option) transport.Transport{}
 
 	DefaultStores = map[string]func(...store.Option) store.Store{
-		"memory":   store.NewMemoryStore,
-		"mysql":    mysql.NewMysqlStore,
-		"natsjskv": natsjskv.NewStore,
-		"postgres": postgres.NewStore,
+		"memory": store.NewMemoryStore,
 	}
 
 	DefaultTracers = map[string]func(...trace.Option) trace.Tracer{}
@@ -289,9 +269,7 @@ var (
 
 	DefaultConfigs = map[string]func(...config.Option) (config.Config, error){}
 
-	DefaultCaches = map[string]func(...cache.Option) cache.Cache{
-		"redis": redis.NewRedisCache,
-	}
+	DefaultCaches  = map[string]func(...cache.Option) cache.Cache{}
 	DefaultStreams = map[string]func(...events.Option) (events.Stream, error){}
 )
 
@@ -401,36 +379,6 @@ func (c *cmd) Before(ctx *cli.Context) error {
 			*c.opts.Broker = imported.Broker
 			*c.opts.Store = imported.Store
 			*c.opts.Transport = imported.Transport
-		case "nats":
-			imported, ierr := mprofile.NatsProfile()
-			if ierr != nil {
-				return fmt.Errorf("failed to load nats profile: %v", ierr)
-			}
-			// Set the registry
-			sopts, clopts := c.setRegistry(imported.Registry)
-			serverOpts = append(serverOpts, sopts...)
-			clientOpts = append(clientOpts, clopts...)
-
-			// set the store
-			sopts, clopts = c.setStore(imported.Store)
-			serverOpts = append(serverOpts, sopts...)
-			clientOpts = append(clientOpts, clopts...)
-
-			// set the transport
-			sopts, clopts = c.setTransport(imported.Transport)
-			serverOpts = append(serverOpts, sopts...)
-			clientOpts = append(clientOpts, clopts...)
-
-			// Set the broker
-			sopts, clopts = c.setBroker(imported.Broker)
-			serverOpts = append(serverOpts, sopts...)
-			clientOpts = append(clientOpts, clopts...)
-
-			// Set the stream
-			sopts, clopts = c.setStream(imported.Stream)
-			serverOpts = append(serverOpts, sopts...)
-			clientOpts = append(clientOpts, clopts...)
-
 		// Add more profiles as needed
 		default:
 			return fmt.Errorf("unsupported profile: %s", profileName)

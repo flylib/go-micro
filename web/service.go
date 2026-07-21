@@ -13,14 +13,14 @@ import (
 	"time"
 
 	"github.com/flylib/go-micro"
-	maddr "github.com/flylib/go-micro/internal/util/addr"
-	"github.com/flylib/go-micro/internal/util/backoff"
 	mhttp "github.com/flylib/go-micro/internal/util/http"
-	mnet "github.com/flylib/go-micro/internal/util/net"
 	signalutil "github.com/flylib/go-micro/internal/util/signal"
-	mls "github.com/flylib/go-micro/internal/util/tls"
 	log "github.com/flylib/go-micro/logger"
 	"github.com/flylib/go-micro/registry"
+	maddr "github.com/flylib/go-micro/util/addr"
+	"github.com/flylib/go-micro/util/backoff"
+	mnet "github.com/flylib/go-micro/util/net"
+	mls "github.com/flylib/go-micro/util/tls"
 	"github.com/urfave/cli/v2"
 )
 

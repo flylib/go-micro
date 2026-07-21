@@ -7,10 +7,10 @@ import (
 	"net"
 
 	"github.com/flylib/go-micro/cmd"
-	maddr "github.com/flylib/go-micro/internal/util/addr"
-	mnet "github.com/flylib/go-micro/internal/util/net"
-	mtls "github.com/flylib/go-micro/internal/util/tls"
-	"github.com/flylib/go-mi
+	"github.com/flylib/go-micro/transport"
+	maddr "github.com/flylib/go-micro/util/addr"
+	mnet "github.com/flylib/go-micro/util/net"
+	mtls "github.com/flylib/go-micro/util/tls"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 

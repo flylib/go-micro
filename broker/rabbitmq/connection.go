@@ -10,8 +10,9 @@ import (
 	"sync"
 	"time"
 
-	mtls "github.com/flylib/go-micro/internal/util/tls"
-	"
+	"github.com/flylib/go-micro/logger"
+	mtls "github.com/flylib/go-micro/util/tls"
+
 )
 
 type MQExchangeType string

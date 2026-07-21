@@ -1,22 +1,12 @@
-// Package profileconfig provides grouped plugin profiles for go-micro
+// Package profile provides grouped plugin profiles for go-micro
 package profile
 
 import (
-	"os"
-	"strings"
-
 	"github.com/flylib/go-micro/broker"
-	"github.com/flylib/go-micro/broker/nats"
 	"github.com/flylib/go-micro/events"
-	nevents "github.com/flylib/go-micro/events/natsjs"
 	"github.com/flylib/go-micro/registry"
-	nreg "github.com/flylib/go-micro/registry/nats"
 	"github.com/flylib/go-micro/store"
-	nstore "github.com/flylib/go-micro/store/nats-js-kv"
-
-
 	"github.com/flylib/go-micro/transport"
-	ntx "github.com/flylib/go-micro/transport/nats"
 )
 
 type Profile struct {
@@ -40,51 +30,6 @@ func LocalProfile() (Profile, error) {
 	}, err
 }
 
-// NatsProfile returns a profile with NATS as the registry, broker, store, and transport
-// It uses the environment variable MICR_NATS_ADDRESS to set the NATS server address
-// If the variable is not set, it defaults to nats://0.0.0.0:4222 which will connect to a local NATS server
-func NatsProfile() (Profile, error) {
-	addr := os.Getenv("MICRO_NATS_ADDRESS")
-	if addr == "" {
-		addr = "nats://0.0.0.0:4222"
-	}
-	// Split the address by comma, trim whitespace, and convert to a slice of strings
-	addrs := splitNatsAdressList(addr)
-
-	reg := nreg.NewNatsRegistry(registry.Addrs(addrs...))
-
-	nopts := natslib.GetDefaultOptions()
-	nopts.Servers = addrs
-	brok := nats.NewNatsBroker(broker.Addrs(addrs...), nats.Options(nopts))
-
-	st := nstore.NewStore(nstore.NatsOptions(natslib.Options{Servers: addrs}))
-	tx := ntx.NewTransport(ntx.Options(natslib.Options{Servers: addrs}))
-
-	stream, err := nevents.NewStream(
-		nevents.Address(addr),
-	)
-
-	registry.DefaultRegistry = reg
-	broker.DefaultBroker = brok
-	store.DefaultStore = st
-	transport.DefaultTransport = tx
-	return Profile{
-		Registry:  reg,
-		Broker:    brok,
-		Store:     st,
-		Transport: tx,
-		Stream:    stream,
-	}, err
-}
-
-func splitNatsAdressList(addr string) []string {
-	// Split the address by comma
-	addrs := strings.Split(addr, ",")
-	// Trim any whitespace from each address
-	for i, a := range addrs {
-		addrs[i] = strings.TrimSpace(a)
-	}
-	return addrs
-}
-
-// Add more profiles as needed, e.g. grpc
+// Backend-specific profiles (e.g. NATS as registry/broker/store/transport)
+// live with their plugin modules — import the plugins you need and compose
+// a Profile in your own code.

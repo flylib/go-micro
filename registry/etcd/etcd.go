@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	mtls "github.com/flylib/go-micro/internal/util/tls"
 	"github.com/flylib/go-micro/logger"
 	"github.com/flylib/go-micro/registry"
-	hash "github.com/mitchellh/hashstructur
+	mtls "github.com/flylib/go-micro/util/tls"
+	hash "github.com/mitchellh/hashst
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"

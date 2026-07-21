@@ -7,11 +7,12 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/flylib/go-micro/client"
 	"github.com/flylib/go-micro/cmd"
 	"github.com/flylib/go-micro/codec/bytes"
 	"github.com/flylib/go-micro/registry"
-
 
 	"github.com/flylib/go-micro/cmd/micro/cli/new"
 	"github.com/flylib/go-micro/cmd/micro/cli/util"

@@ -16,10 +16,10 @@ import (
 	"github.com/flylib/go-micro/cmd"
 	raw "github.com/flylib/go-micro/codec/bytes"
 	"github.com/flylib/go-micro/errors"
-	pnet "github.com/flylib/go-micro/internal/util/net"
 	"github.com/flylib/go-micro/metadata"
 	"github.com/flylib/go-micro/registry"
 	"github.com/flylib/go-micro/selector"
+	pnet "github.com/flylib/
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding"

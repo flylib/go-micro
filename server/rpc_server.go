@@ -15,15 +15,13 @@ import (
 
 	"github.com/flylib/go-micro/broker"
 	"github.com/flylib/go-micro/codec"
-	"github.com/flylib/go-micro/internal/util/addr"
-	"github.com/flylib/go-micro/internal/util/backoff"
-	mnet "github.com/flylib/go-micro/internal/util/net"
 	"github.com/flylib/go-micro/internal/util/socket"
 	log "github.com/flylib/go-micro/logger"
 	"github.com/flylib/go-micro/metadata"
 	"github.com/flylib/go-micro/registry"
 	"github.com/flylib/go-micro/transport"
 	"github.com/flylib/go-micro/transport/headers"
+	"github.com/flylib/go-mic
 )
 
 type rpcServer struct {

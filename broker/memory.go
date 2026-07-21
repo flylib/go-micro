@@ -6,9 +6,9 @@ import (
 	"math/rand"
 	"sync"
 
-	maddr "github.com/flylib/go-micro/internal/util/addr"
-	mnet "github.com/flylib/go-micro/internal/util/net"
 	log "github.com/flylib/go-micro/logger"
+	maddr "github.com/flylib/go-micro/util/addr"
+	mnet "github.com/flylib/go-micro/util/net"
 	"github.com/google/uuid"
 )
 

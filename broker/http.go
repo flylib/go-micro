@@ -16,11 +16,13 @@ import (
 
 	"github.com/flylib/go-micro/codec/json"
 	merr "github.com/flylib/go-micro/errors"
-	maddr "github.com/flylib/go-micro/internal/util/addr"
-	mnet "github.com/flylib/go-micro/internal/util/net"
-	mls "github.com/flylib/go-micro/internal/util/tls"
 	"github.com/flylib/go-micro/registry"
-	"github.com/flylib/go-micro/registry/
+	"github.com/flylib/go-micro/registry/cache"
+	"github.com/flylib/go-micro/transport/headers"
+	maddr "github.com/flylib/go-micro/util/addr"
+	mnet "github.com/flylib/go-micro/util/net"
+	mls "github.com/flylib/go-micro/util/tls"
+	"github.com/google/uuid"
 	"golang.org/x/net/http2"
 )
 

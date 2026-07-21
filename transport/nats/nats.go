@@ -12,7 +12,7 @@ import (
 	"github.com/flylib/go-micro/codec/json"
 	"github.com/flylib/go-micro/server"
 	"github.com/flylib/go-micro/transport"
-
+	"github.com/nats-io/nats.go"
 )
 
 type ntport struct {

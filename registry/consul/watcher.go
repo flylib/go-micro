@@ -3,9 +3,9 @@ package consul
 import (
 	"sync"
 
-	mnet "github.com/flylib/go-micro/internal/util/net"
-	regutil "github.com/flylib/go-micro/internal/util/registry"
 	"github.com/flylib/go-micro/registry"
+	mnet "github.com/flylib/go-micro/util/net"
+	regutil "github.com/flylib/go-micro/util/registry"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/api/watch"
 )

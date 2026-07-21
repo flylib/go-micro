@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/flylib/go-micro"
 	"github.com/flylib/go-micro/logger"
 	"github.com/flylib/go-micro/registry"
-
 )
 
 // Options for web.

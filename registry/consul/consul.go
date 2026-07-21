@@ -12,9 +12,10 @@ import (
 	"sync"
 	"time"
 
-	mnet "github.com/flylib/go-micro/internal/util/net"
-	mtls "github.com/flylib/go-micro/internal/util/tls"
-	"github.com/flylib/go-micro/re
+	"github.com/flylib/go-micro/registry"
+	mnet "github.com/flylib/go-micro/util/net"
+	mtls "github.com/flylib/go-micro/util/tls"
+	c
 )
 
 type consulRegistry struct {

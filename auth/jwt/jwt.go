@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/flylib/go-micro/auth"
+	jwtToken "github.com/flylib/go-m
 	"github.com/flylib/go-micro/cmd"
-
 )
 
 func init() {
