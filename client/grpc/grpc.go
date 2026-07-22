@@ -19,7 +19,7 @@ import (
 	"github.com/flylib/go-micro/metadata"
 	"github.com/flylib/go-micro/registry"
 	"github.com/flylib/go-micro/selector"
-	pnet "github.com/flylib/
+	pnet "github.com/flylib/go-micro/util/net"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding"

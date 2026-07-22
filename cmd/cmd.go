@@ -126,7 +126,7 @@ var (
 		&cli.StringFlag{
 			Name:    "broker",
 			EnvVars: []string{"MICRO_BROKER"},
-			Usage:   "Broker for pub/sub. e.g. http, memory (plugins: nats, rabbitmq)",
+			Usage:   "Broker for pub/sub. http, nats, rabbitmq",
 		},
 		&cli.StringFlag{
 			Name:    "broker_address",

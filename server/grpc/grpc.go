@@ -23,8 +23,7 @@ import (
 	"github.com/flylib/go-micro/server"
 	"github.com/flylib/go-micro/util/addr"
 	"github.com/flylib/go-micro/util/backoff"
-	mgrpc
-	"github.com/golang/protobuf/proto"
+	mgrpc "github.com/flylib/go-micro/util/g
 	"golang.org/x/net/netutil"
 
 	"google.golang.org/grpc"

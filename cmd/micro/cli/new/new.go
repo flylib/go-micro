@@ -13,9 +13,10 @@ import (
 	"text/template"
 	"time"
 
-	tmpl "github.com/flylib/go
 	"github.com/urfave/cli/v2"
 	"github.com/xlab/treeprint"
+
+	tmpl "github.com/flylib/go-micro/cmd/micro/cli/new/template"
 )
 
 func protoComments(goDir, alias string) []string {
