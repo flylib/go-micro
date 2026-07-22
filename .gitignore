@@ -41,8 +41,6 @@ coverage.html
 *.swo
 
 # go work files
-go.work
-go.work.sum
 
 # Build artifacts
 dist/
