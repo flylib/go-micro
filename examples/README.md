@@ -102,3 +102,4 @@ To add a new example:
 4. Add to this index
 5. Ensure it runs with `go run .`
 
+- [smoke](smoke/) — end-to-end smoke tests (core in-process + nacos integration via podman)

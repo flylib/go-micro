@@ -257,6 +257,7 @@ Backends: memory (default), SQLite, Postgres.
 - [auth](examples/auth/) — authentication
 - [graceful-stop](examples/graceful-stop/) — clean shutdown
 - [grpc-interop](examples/grpc-interop/) — call go-micro from any gRPC client
+- [smoke](examples/smoke/) — end-to-end smoke tests (core + nacos via podman)
 - [deployment](examples/deployment/) — deploying services
 
 See [all examples](examples/README.md).
