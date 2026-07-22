@@ -1,4 +1,4 @@
-package micro_test
+package smoke
 
 import (
 	"context"

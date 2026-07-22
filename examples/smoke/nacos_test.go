@@ -1,4 +1,4 @@
-package nacos
+package smoke
 
 import (
 	"fmt"
@@ -9,10 +9,14 @@ import (
 	"time"
 
 	"github.com/flylib/go-micro/registry"
+	"github.com/flylib/go-micro/registry/nacos"
 )
 
 // nacosAddr returns the nacos address for integration tests, defaulting to
-// the local podman container. Override with NACOS_ADDR.
+// the local podman container (nacos-smoke). Override with NACOS_ADDR.
+//
+//	podman run -d --name nacos-smoke -e MODE=standalone \
+//	  -p 8848:8848 -p 9848:9848 nacos/nacos-server:v2.5.1
 func nacosAddr() string {
 	if v := os.Getenv("NACOS_ADDR"); v != "" {
 		return v
@@ -38,8 +42,9 @@ func waitReady(t *testing.T, addr string, timeout time.Duration) bool {
 	return false
 }
 
-// TestSmokeNacosRegistry exercises the plugin against a real nacos server:
+// TestSmokeNacosRegistry exercises the nacos plugin against a real server:
 // register → GetService → ListServices → Watch → Deregister.
+// Skips when no nacos is reachable.
 func TestSmokeNacosRegistry(t *testing.T) {
 	addr := nacosAddr()
 	if _, err := net.DialTimeout("tcp", addr, 2*time.Second); err != nil {
@@ -49,7 +54,7 @@ func TestSmokeNacosRegistry(t *testing.T) {
 		t.Skipf("nacos at %s never became ready", addr)
 	}
 
-	r := NewRegistry(registry.Addrs(addr))
+	r := nacos.NewRegistry(registry.Addrs(addr))
 
 	svc := &registry.Service{
 		Name:    "smoke.nacos",
@@ -156,22 +161,4 @@ func TestSmokeNacosRegistry(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 	}
 	t.Fatalf("service still visible after deregister: %v err=%v", got, err)
-}
-
-// TestSplitAddress is a pure unit test for address parsing.
-func TestSplitAddress(t *testing.T) {
-	cases := []struct {
-		in   string
-		host string
-		port uint64
-	}{
-		{"10.0.0.1:8848", "10.0.0.1", 8848},
-		{"nacos-host", "nacos-host", defaultPort},
-	}
-	for _, c := range cases {
-		h, p, err := splitAddress(c.in)
-		if err != nil || h != c.host || p != c.port {
-			t.Fatalf("splitAddress(%q) = (%q,%d,%v), want (%q,%d)", c.in, h, p, err, c.host, c.port)
-		}
-	}
 }
