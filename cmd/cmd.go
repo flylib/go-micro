@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/urfave/cli/v2"
 	"github.com/flylib/go-micro/auth"
 	"github.com/flylib/go-micro/broker"
 	"github.com/flylib/go-micro/cache"
@@ -19,13 +20,12 @@ import (
 	"github.com/flylib/go-micro/debug/trace"
 	"github.com/flylib/go-micro/events"
 	"github.com/flylib/go-micro/logger"
+	mprofile "github.com/flylib/go-micro/service/profile"
 	"github.com/flylib/go-micro/registry"
 	"github.com/flylib/go-micro/selector"
 	"github.com/flylib/go-micro/server"
-	mprofile "github.com/flylib/go-mic
 	"github.com/flylib/go-micro/store"
 	"github.com/flylib/go-micro/transport"
-o
 )
 
 type Cmd interface {
@@ -237,8 +237,8 @@ var (
 	}
 
 	DefaultBrokers = map[string]func(...broker.Option) broker.Broker{
-		"memory": broker.NewMemoryBroker,
-		"http":   broker.NewHttpBroker,
+		"memory":   broker.NewMemoryBroker,
+		"http":     broker.NewHttpBroker,
 	}
 
 	DefaultClients = map[string]func(...client.Option) client.Client{}
@@ -252,10 +252,11 @@ var (
 
 	DefaultServers = map[string]func(...server.Option) server.Server{}
 
-	DefaultTransports = map[string]func(...transport.Option) transport.Transport{}
+	DefaultTransports = map[string]func(...transport.Option) transport.Transport{
+	}
 
 	DefaultStores = map[string]func(...store.Option) store.Store{
-		"memory": store.NewMemoryStore,
+		"memory":   store.NewMemoryStore,
 	}
 
 	DefaultTracers = map[string]func(...trace.Option) trace.Tracer{}
@@ -269,7 +270,8 @@ var (
 
 	DefaultConfigs = map[string]func(...config.Option) (config.Config, error){}
 
-	DefaultCaches  = map[string]func(...cache.Option) cache.Cache{}
+	DefaultCaches = map[string]func(...cache.Option) cache.Cache{
+	}
 	DefaultStreams = map[string]func(...events.Option) (events.Stream, error){}
 )
 

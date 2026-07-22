@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/urfave/cli/v2"
 	"github.com/flylib/go-micro/cmd"
-
 )
 
 const systemdTemplate = `[Unit]

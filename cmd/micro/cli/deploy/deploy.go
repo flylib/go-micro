@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/urfave/cli/v2"
 	"github.com/flylib/go-micro/cmd"
 	"github.com/flylib/go-micro/cmd/micro/run/config"
-
 )
 
 const (

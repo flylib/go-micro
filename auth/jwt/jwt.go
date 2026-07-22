@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
+	jwtToken "github.com/flylib/go-micro/auth/jwt/token"
 	"github.com/flylib/go-micro/auth"
-	jwtToken "github.com/flylib/go-m
 	"github.com/flylib/go-micro/cmd"
 )
 

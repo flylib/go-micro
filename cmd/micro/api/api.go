@@ -26,13 +26,13 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/urfave/cli/v2"
 	"github.com/flylib/go-micro/broker"
 	"github.com/flylib/go-micro/client"
 	"github.com/flylib/go-micro/cmd"
 	codecBytes "github.com/flylib/go-micro/codec/bytes"
 	"github.com/flylib/go-micro/registry"
 	"github.com/flylib/go-micro/store"
-
 )
 
 func init() {

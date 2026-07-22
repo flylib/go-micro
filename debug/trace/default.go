@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/flylib/go-micro/internal/util/ring"
-
 )
 
 type memTracer struct {

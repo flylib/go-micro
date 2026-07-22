@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/urfave/cli/v2"
 	"github.com/flylib/go-micro/broker"
-
 )
 
 // brokerCommand exposes the broker interface: publish, subscribe.

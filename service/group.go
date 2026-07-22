@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"sync"
 
+	log "github.com/flylib/go-micro/logger"
 	signalutil "github.com/flylib/go-micro/internal/util/signal"
-
 )
 
 // Group runs multiple services in a single binary with shared

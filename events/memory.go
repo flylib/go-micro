@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/flylib/go-micro/logger"
 	"github.com/flylib/go-micro/store"
-	"
 )
 
 // NewStream returns an initialized memory stream

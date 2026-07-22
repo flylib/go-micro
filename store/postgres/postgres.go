@@ -29,9 +29,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/lib/pq"
+	"github.com/pkg/errors"
 	"github.com/flylib/go-micro/logger"
 	"github.com/flylib/go-micro/store"
-	"
 )
 
 // DefaultDatabase is the namespace that the sql store

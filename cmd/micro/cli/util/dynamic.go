@@ -12,10 +12,11 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/stretchr/objx"
+	"github.com/urfave/cli/v2"
 	"github.com/flylib/go-micro/client"
 	"github.com/flylib/go-micro/metadata"
 	"github.com/flylib/go-micro/registry"
-	"
 )
 
 // AddMetadataToContext parses metadata strings in the format "Key:Value" and adds them to the context

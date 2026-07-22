@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/flylib/go-micro/config/source"
-
 )
 
 type memory struct {

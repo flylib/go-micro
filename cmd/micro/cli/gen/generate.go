@@ -8,8 +8,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/urfave/cli/v2"
 	"github.com/flylib/go-micro/cmd"
-
 )
 
 var handlerTemplate = `package handler

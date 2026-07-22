@@ -15,8 +15,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	log "github.com/flylib/go-micro/logger"
 	"github.com/flylib/go-micro/internal/util/mdns"
-	l
 )
 
 var (

@@ -9,9 +9,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/urfave/cli/v2"
 	"github.com/flylib/go-micro/cmd"
 	"github.com/flylib/go-micro/cmd/micro/run/config"
-
 )
 
 // Build builds Go binaries for services
