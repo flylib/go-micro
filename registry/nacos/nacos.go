@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"strconv"
+	"strings"
 
 	"github.com/nacos-group/nacos-sdk-go/v2/clients"
 	"github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
@@ -58,8 +59,12 @@ func configure(r *nacosRegistry, opts ...registry.Option) error {
 
 	cc := constant.ClientConfig{
 		NotLoadCacheAtStart: true,
-		TimeoutMs:           5000,
-		LogLevel:            "warn",
+		// a registry must observe services going away; without this the
+		// SDK refuses to update its cache when the instance list becomes
+		// empty (nacos "empty push protection")
+		UpdateCacheWhenEmpty: true,
+		TimeoutMs:            5000,
+		LogLevel:             "warn",
 	}
 	if r.opts.Context != nil {
 		if v, ok := r.opts.Context.Value(clientConfigKey{}).(constant.ClientConfig); ok {
@@ -174,6 +179,11 @@ func (r *nacosRegistry) GetService(name string, _ ...registry.GetOption) ([]*reg
 		HealthyOnly: true,
 	})
 	if err != nil {
+		// the SDK reports an empty instance list as an error; map it to
+		// the framework's standard not-found semantics
+		if strings.Contains(err.Error(), "instance list is empty") {
+			return nil, registry.ErrNotFound
+		}
 		return nil, err
 	}
 	if len(instances) == 0 {
