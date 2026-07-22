@@ -5,6 +5,14 @@ go 1.24
 require (
 	github.com/flylib/go-micro v0.0.0-00010101000000-000000000000
 	github.com/flylib/go-micro/registry/nacos v0.0.0-00010101000000-000000000000
+	github.com/segmentio/kafka-go v0.4.51
+)
+
+require (
+	github.com/pierrec/lz4/v4 v4.1.15 // indirect
+	go.opentelemetry.io/otel/metric v1.35.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.35.0 // indirect
+	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 )
 
 require (
@@ -37,6 +45,7 @@ require (
 	github.com/clbanning/mxj/v2 v2.5.5 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
+	github.com/flylib/go-micro/broker/kafka v0.0.0-00010101000000-000000000000
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
@@ -62,8 +71,6 @@ require (
 	github.com/urfave/cli/v2 v2.27.6 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.etcd.io/bbolt v1.4.0 // indirect
-	go.opentelemetry.io/otel v1.35.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.35.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
@@ -85,3 +92,5 @@ replace (
 	github.com/flylib/go-micro => ../..
 	github.com/flylib/go-micro/registry/nacos => ../../registry/nacos
 )
+
+replace github.com/flylib/go-micro/broker/kafka => ../../broker/kafka

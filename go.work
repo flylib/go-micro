@@ -3,6 +3,7 @@ go 1.25.0
 use (
 	.
 	./auth/jwt
+	./broker/kafka
 	./broker/nats
 	./broker/rabbitmq
 	./cache/redis

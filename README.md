@@ -36,7 +36,7 @@ Everything the framework does is expressed as an interface with a default implem
 | Abstraction | Responsibility | Default | Other backends |
 |---|---|---|---|
 | **Registry** | Service discovery — register/lookup service nodes | mDNS | Consul, etcd, NATS, Nacos |
-| **Broker** | Asynchronous pub/sub messaging | HTTP | NATS, RabbitMQ, memory |
+| **Broker** | Asynchronous pub/sub messaging | HTTP | NATS, RabbitMQ, Kafka, memory |
 | **Transport** | Point-to-point synchronous communication (the RPC pipe) | HTTP | gRPC, NATS |
 | **Client** | Makes RPC calls (retries, timeouts, streaming) | RPC | gRPC |
 | **Server** | Serves RPC handlers and subscribers | RPC | gRPC |
@@ -209,7 +209,7 @@ service := micro.New("orders",
 ```
 
 - **Registry:** mDNS (default), Consul, etcd, NATS, Nacos
-- **Broker:** HTTP (default), NATS, RabbitMQ, memory
+- **Broker:** HTTP (default), NATS, RabbitMQ, Kafka, memory
 - **Transport:** HTTP (default), gRPC, NATS
 - **Store:** file/bbolt (default), Postgres, MySQL, NATS JetStream KV
 - **Config sources:** env, file, flag, CLI, NATS, memory
