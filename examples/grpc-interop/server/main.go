@@ -14,7 +14,7 @@ import (
 	"github.com/flylib/go-micro/server"
 	grpcserver "github.com/flylib/go-micro/server/grpc"
 
-	pb "example/proto"
+	pb "github.com/flylib/go-micro/examples/grpc-interop/proto"
 )
 
 type Greeter struct{}

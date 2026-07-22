@@ -5,7 +5,6 @@ go 1.24
 require (
 	github.com/flylib/go-micro v0.0.0-00010101000000-000000000000
 	github.com/go-sql-driver/mysql v1.9.2
-	github.com/pkg/errors v0.9.1
 )
 
 require (
@@ -15,6 +14,7 @@ require (
 	github.com/miekg/dns v1.1.50 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	go.etcd.io/bbolt v1.4.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.38.0 // indirect

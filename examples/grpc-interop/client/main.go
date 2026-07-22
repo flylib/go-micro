@@ -10,7 +10,7 @@ import (
 	"log"
 	"time"
 
-	pb "example/proto"
+	pb "github.com/flylib/go-micro/examples/grpc-interop/proto"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

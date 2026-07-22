@@ -18,6 +18,8 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/miekg/dns v1.1.50 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.21 // indirect
+	go.opentelemetry.io/otel v1.35.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.35.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.38.0 // indirect

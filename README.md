@@ -263,3 +263,15 @@ Backends: memory (default), SQLite, Postgres.
 See [all examples](examples/README.md).
 
 Package reference: https://pkg.go.dev/github.com/flylib/go-micro
+
+## Development
+
+The repo is a multi-module workspace (core + one module per pluggable backend + examples), wired together by [go.work](go.work) — open the repo root in your IDE and every module resolves against local sources, no `replace` juggling needed while developing or debugging.
+
+```bash
+go build ./...                    # build the core (workspace mode)
+cd examples/smoke && go test .    # end-to-end smoke tests
+GOWORK=off go build ./...         # build a module standalone (as consumers see it)
+```
+
+Each plugin module also carries its own `replace github.com/flylib/go-micro => ../..` so it still builds standalone outside the workspace.
