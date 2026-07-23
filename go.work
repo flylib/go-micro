@@ -30,6 +30,9 @@ use (
 	./store/postgres
 	./transport/grpc
 	./transport/nats
+	./wrapper/breaker/hystrix
+	./wrapper/governance/sentinel
 	./wrapper/monitoring/prometheus
+	./wrapper/ratelimiter
 	./wrapper/trace/opentelemetry
 )
