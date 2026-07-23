@@ -30,4 +30,7 @@ const (
 	TraceIDKey = "Micro-Trace-ID"
 	// Stream header.
 	Stream = "Micro-Stream"
+	// Deadline is the remaining request budget in milliseconds, propagated
+	// across hops so downstream services shrink their timeouts accordingly.
+	Deadline = "Micro-Deadline"
 )
