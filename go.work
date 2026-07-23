@@ -34,5 +34,6 @@ use (
 	./wrapper/governance/sentinel
 	./wrapper/monitoring/prometheus
 	./wrapper/ratelimiter
+	./wrapper/shedding
 	./wrapper/trace/opentelemetry
 )

@@ -15,7 +15,7 @@ Registry.GetService("orders")            [v1: n1 n2 n3] [v2: n4]
       Next() ──▶ n2      (client calls Next once per attempt;
       Next() ──▶ n3       a retry naturally lands on another node)
 ```
-- Strategies: round-robin (default) and random ship in-package; a `Strategy` is just `func([]*registry.Service) Next`, so custom balancers are one function.
+- Strategies: round-robin (default) and random ship in-package; [p2c/](p2c) adds power-of-two-choices with EWMA latency feedback (pair its Strategy with its CallWrapper). A `Strategy` is just `func([]*registry.Service) Next`, so custom balancers are one function.
 - `Filter`s prune candidates before strategy runs (by version, metadata, endpoint).
 - Marks nodes success/failure (`Mark`) so implementations can blacklist flapping nodes.
 
