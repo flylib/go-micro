@@ -2,7 +2,12 @@ module github.com/flylib/go-micro/wrapper/ratelimiter
 
 go 1.25.0
 
-require github.com/flylib/go-micro v0.0.0-00010101000000-000000000000
+require (
+	github.com/flylib/go-micro v0.0.0-00010101000000-000000000000
+	go.uber.org/ratelimit v0.3.1
+)
+
+require github.com/benbjohnson/clock v1.3.0 // indirect
 
 require (
 	github.com/golang/protobuf v1.5.4 // indirect

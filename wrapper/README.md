@@ -37,4 +37,4 @@ Wrappers nest onion-style in registration order: `W1(W2(handler))`. Code before 
 
 ## In-tree wrappers
 
-[auth](auth) (credentials both sides) · [monitoring/prometheus](monitoring/prometheus) (request metrics) · [trace/opentelemetry](trace/opentelemetry) (spans + propagation) · [breaker/hystrix](breaker/hystrix) (circuit breaking) · [ratelimiter](ratelimiter) (token-bucket limits) · [governance/sentinel](governance/sentinel) (Sentinel flow control + circuit breaking + system protection) — all standalone modules.
+[auth](auth) (credentials both sides) · [monitoring/prometheus](monitoring/prometheus) (request metrics) · [trace/opentelemetry](trace/opentelemetry) (spans + propagation) · [breaker/hystrix](breaker/hystrix) (circuit breaking) · [ratelimiter](ratelimiter) (token-bucket & leaky-bucket limits) · [governance/sentinel](governance/sentinel) (Sentinel flow control + circuit breaking + system protection) — all standalone modules.
