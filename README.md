@@ -43,7 +43,7 @@ Everything the framework does is expressed as an interface with a default implem
 | **Selector** | Picks one node from Registry results (load balancing) | round-robin | — |
 | **Codec** | Encodes/decodes messages | protobuf/JSON | grpc, bytes, jsonrpc, text |
 | **Store** | Key-value persistence | file (bbolt) | Postgres, MySQL, NATS JetStream KV |
-| **Config** | Dynamic configuration from sources | — | env, file, flag, CLI, NATS, memory |
+| **Config** | Dynamic configuration from sources | — | env, file, flag, CLI, NATS, Nacos, etcd, Consul, memory |
 | **Model** | Typed data layer (CRUD + queries) | memory | SQLite, Postgres |
 | **Logger** | Structured logging | built-in (slog-style) | slog, Zap, zerolog |
 
@@ -215,7 +215,7 @@ service := micro.New("orders",
 - **Broker:** HTTP (default), NATS, RabbitMQ, Kafka, memory
 - **Transport:** HTTP (default), gRPC, NATS
 - **Store:** file/bbolt (default), Postgres, MySQL, NATS JetStream KV
-- **Config sources:** env, file, flag, CLI, NATS, memory
+- **Config sources:** env, file, flag, CLI, memory, NATS, Nacos, etcd, Consul
 - **Logger:** built-in (default), slog, Zap, zerolog
 
 ## Data Model

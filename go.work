@@ -1,4 +1,4 @@
-go 1.25.0
+go 1.26
 
 use (
 	.
@@ -8,6 +8,9 @@ use (
 	./broker/rabbitmq
 	./cache/redis
 	./client/grpc
+	./config/source/consul
+	./config/source/etcd
+	./config/source/nacos
 	./config/source/nats
 	./events/natsjs
 	./examples/auth
