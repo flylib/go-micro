@@ -32,6 +32,7 @@ use (
 	./store/mysql
 	./store/nats-js-kv
 	./store/postgres
+	./sync/etcd
 	./transport/grpc
 	./transport/nats
 	./wrapper/auth

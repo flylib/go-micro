@@ -49,6 +49,7 @@ require (
 	github.com/flylib/go-micro/config/source/consul v0.0.0-00010101000000-000000000000
 	github.com/flylib/go-micro/config/source/etcd v0.0.0-00010101000000-000000000000
 	github.com/flylib/go-micro/config/source/nacos v0.0.0-00010101000000-000000000000
+	github.com/flylib/go-micro/sync/etcd v0.0.0-00010101000000-000000000000
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
@@ -103,3 +104,5 @@ replace github.com/flylib/go-micro/config/source/nacos => ../../config/source/na
 replace github.com/flylib/go-micro/config/source/etcd => ../../config/source/etcd
 
 replace github.com/flylib/go-micro/config/source/consul => ../../config/source/consul
+
+replace github.com/flylib/go-micro/sync/etcd => ../../sync/etcd
