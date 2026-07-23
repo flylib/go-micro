@@ -47,6 +47,8 @@ Everything the framework does is expressed as an interface with a default implem
 | **Model** | Typed data layer (CRUD + queries) | memory | SQLite, Postgres |
 | **Logger** | Structured logging | built-in (slog-style) | slog, Zap, zerolog |
 
+Each abstraction has a README in its package directory ([registry/](registry), [broker/](broker), [wrapper/](wrapper), …) covering the concept, semantics and available backends.
+
 Supporting pieces: **Auth** (accounts/JWT), **Cache**, **Events** (JetStream streams), **Metadata** (request context), **Wrapper** (client/server middleware), **Logger**, and **Debug** (profile/trace/health).
 
 ### How a request flows
