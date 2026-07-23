@@ -45,6 +45,7 @@ Everything the framework does is expressed as an interface with a default implem
 | **Store** | Key-value persistence | file (bbolt) | Postgres, MySQL, NATS JetStream KV |
 | **Config** | Dynamic configuration from sources | — | env, file, flag, CLI, NATS, memory |
 | **Model** | Typed data layer (CRUD + queries) | memory | SQLite, Postgres |
+| **Logger** | Structured logging | built-in (slog-style) | slog, Zap, zerolog |
 
 Supporting pieces: **Auth** (accounts/JWT), **Cache**, **Events** (JetStream streams), **Metadata** (request context), **Wrapper** (client/server middleware), **Logger**, and **Debug** (profile/trace/health).
 
@@ -213,6 +214,7 @@ service := micro.New("orders",
 - **Transport:** HTTP (default), gRPC, NATS
 - **Store:** file/bbolt (default), Postgres, MySQL, NATS JetStream KV
 - **Config sources:** env, file, flag, CLI, NATS, memory
+- **Logger:** built-in (default), slog, Zap, zerolog
 
 ## Data Model
 

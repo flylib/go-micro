@@ -15,6 +15,9 @@ use (
 	./examples/hello-world
 	./examples/smoke
 	./examples/web-service
+	./logger/slog
+	./logger/zap
+	./logger/zerolog
 	./model/postgres
 	./model/sqlite
 	./registry/consul
