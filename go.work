@@ -10,6 +10,7 @@ use (
 	./client/grpc
 	./config/source/nats
 	./events/natsjs
+	./examples/auth
 	./examples/graceful-stop
 	./examples/grpc-interop
 	./examples/hello-world
@@ -30,7 +31,9 @@ use (
 	./store/postgres
 	./transport/grpc
 	./transport/nats
+	./wrapper/auth
 	./wrapper/breaker/hystrix
+	./wrapper/deadline
 	./wrapper/governance/sentinel
 	./wrapper/monitoring/prometheus
 	./wrapper/ratelimiter
