@@ -39,6 +39,7 @@ use (
 	./wrapper/breaker/hystrix
 	./wrapper/deadline
 	./wrapper/governance/sentinel
+	./wrapper/logging
 	./wrapper/monitoring/prometheus
 	./wrapper/ratelimiter
 	./wrapper/shedding
