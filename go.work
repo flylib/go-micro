@@ -13,6 +13,7 @@ use (
 	./config/source/nacos
 	./config/source/nats
 	./events/natsjs
+	./gateway/conformance
 	./examples/auth
 	./examples/graceful-stop
 	./examples/grpc-interop

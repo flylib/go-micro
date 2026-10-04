@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/flylib/go-micro/gateway/rules.schema.json",
+  "title": "go-micro gateway rules",
+  "description": "Hot-reloadable rules shared by gateway/proxy (Go) and gateway/openresty. See SPEC.md section 9. Route-name uniqueness and backend-dependent checks (SPEC.md 5.2) are enforced by the gateways, not by this schema.",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "defaults": { "$ref": "#/$defs/defaults" },
+    "global": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "plugins": { "$ref": "#/$defs/plugins" } }
+    },
+    "routes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/route" }
+    }
+  },
+  "$defs": {
+    "duration": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)?(ms|s|m|h)$",
+      "description": "e.g. 500ms, 1s, 2m"
+    },
+    "timeout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "connect": { "$ref": "#/$defs/duration", "default": "1s" },
+        "send": { "$ref": "#/$defs/duration", "default": "10s" },
+        "read": { "$ref": "#/$defs/duration", "default": "10s" }
+      }
+    },
+    "retries": { "type": "integer", "minimum": 0, "maximum": 10, "default": 2 },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "strategy": {
+          "enum": ["roundrobin", "random", "weighted", "p2c"],
+          "default": "roundrobin"
+        },
+        "version_weights": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "integer", "minimum": 0 },
+          "description": "Replaces strategy: traffic split by service version, unlisted versions get none."
+        }
+      }
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "labels": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "string" }
+        },
+        "endpoint": {
+          "type": "boolean",
+          "description": "Keep only services that list the called endpoint. etcd registry only."
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "convention": {
+          "type": "boolean",
+          "default": true,
+          "description": "Route unmatched calls to the service derived from the path (SPEC.md 3.1)."
+        },
+        "timeout": { "$ref": "#/$defs/timeout" },
+        "retries": { "$ref": "#/$defs/retries" },
+        "selector": { "$ref": "#/$defs/selector" }
+      }
+    },
+    "match": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "method": { "type": "string", "pattern": "^/[^/]+/[^/]+$" },
+        "prefix": { "type": "string", "pattern": "^/" },
+        "service": { "type": "string", "minLength": 1 }
+      }
+    },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "service": { "type": "string", "minLength": 1 },
+        "selector": { "$ref": "#/$defs/selector" },
+        "filters": { "$ref": "#/$defs/filters" },
+        "timeout": { "$ref": "#/$defs/timeout" },
+        "retries": { "$ref": "#/$defs/retries" }
+      }
+    },
+    "route": {
+      "type": "object",
+      "required": ["name", "match"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+        "match": { "$ref": "#/$defs/match" },
+        "upstream": { "$ref": "#/$defs/upstream" },
+        "plugins": { "$ref": "#/$defs/plugins" }
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/plugin" }
+    },
+    "plugin": {
+      "description": "Unknown names fail validation (SPEC.md 9.4). Implementation-specific plugins use the x- prefix.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["name", "config"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "const": "ip-restriction" },
+            "config": {
+              "type": "object",
+              "additionalProperties": false,
+              "minProperties": 1,
+              "properties": {
+                "allow": { "$ref": "#/$defs/cidrs" },
+                "deny": { "$ref": "#/$defs/cidrs" }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["name", "config"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "const": "jwt-auth" },
+            "config": {
+              "type": "object",
+              "required": ["public_key"],
+              "additionalProperties": false,
+              "properties": {
+                "public_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Base64-encoded PEM, same encoding as auth/jwt/token.WithPublicKey."
+                },
+                "scopes": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["name", "config"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "const": "rate-limit" },
+            "config": {
+              "type": "object",
+              "required": ["rate", "key"],
+              "additionalProperties": false,
+              "properties": {
+                "rate": { "type": "number", "exclusiveMinimum": 0 },
+                "burst": { "type": "integer", "minimum": 0, "default": 0 },
+                "key": {
+                  "type": "string",
+                  "pattern": "^(client_ip|account|header:[A-Za-z0-9-]+)$"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["name"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string", "pattern": "^x-[a-z0-9-]+$" },
+            "config": { "type": "object" }
+          }
+        }
+      ]
+    },
+    "cidrs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "description": "IPv4 or IPv6 address or CIDR.",
+        "pattern": "^([0-9]{1,3}(\\.[0-9]{1,3}){3}(/[0-9]{1,2})?|[0-9A-Fa-f:]*:[0-9A-Fa-f:.]*(/[0-9]{1,3})?)$"
+      }
+    }
+  }
+}
