@@ -14,6 +14,7 @@ use (
 	./config/source/nats
 	./events/natsjs
 	./gateway/conformance
+	./gateway/proxy
 	./examples/auth
 	./examples/graceful-stop
 	./examples/grpc-interop
