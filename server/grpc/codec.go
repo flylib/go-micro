@@ -11,6 +11,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/runtime/protoiface"
+	"google.golang.org/protobuf/runtime/protoimpl"
 )
 
 type jsonCodec struct{}
@@ -60,20 +62,27 @@ func (w wrapCodec) Unmarshal(data []byte, v interface{}) error {
 	return w.Codec.Unmarshal(data, v)
 }
 
+// protoCodec replaces grpc's global "proto" codec (see init), so it must
+// also handle legacy v1 messages such as the etcd client's, as grpc's own
+// codec and client/grpc's do (#2333).
 func (protoCodec) Marshal(v interface{}) ([]byte, error) {
-	m, ok := v.(proto.Message)
-	if !ok {
-		return nil, codec.ErrInvalidMessage
+	switch m := v.(type) {
+	case proto.Message:
+		return proto.Marshal(m)
+	case protoiface.MessageV1:
+		return proto.Marshal(protoimpl.X.ProtoMessageV2Of(m))
 	}
-	return proto.Marshal(m)
+	return nil, codec.ErrInvalidMessage
 }
 
 func (protoCodec) Unmarshal(data []byte, v interface{}) error {
-	m, ok := v.(proto.Message)
-	if !ok {
-		return codec.ErrInvalidMessage
+	switch m := v.(type) {
+	case proto.Message:
+		return proto.Unmarshal(data, m)
+	case protoiface.MessageV1:
+		return proto.Unmarshal(data, protoimpl.X.ProtoMessageV2Of(m))
 	}
-	return proto.Unmarshal(data, m)
+	return codec.ErrInvalidMessage
 }
 
 func (protoCodec) Name() string {
