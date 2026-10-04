@@ -52,3 +52,18 @@ func TestObserveUpdatesEwma(t *testing.T) {
 		t.Fatalf("ewma should land between samples, got %v", time.Duration(lag))
 	}
 }
+
+func TestTrackFeedsLoad(t *testing.T) {
+	const addr = "track-test:1"
+	done := Track(addr)
+	if got := stat(addr).inflight.Load(); got != 1 {
+		t.Fatalf("inflight during call = %d, want 1", got)
+	}
+	done()
+	if got := stat(addr).inflight.Load(); got != 0 {
+		t.Fatalf("inflight after call = %d, want 0", got)
+	}
+	if stat(addr).lag.Load() == 0 {
+		t.Fatal("latency not observed")
+	}
+}

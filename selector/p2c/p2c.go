@@ -99,14 +99,24 @@ func Strategy(services []*registry.Service) selector.Next {
 func NewCallWrapper() client.CallWrapper {
 	return func(next client.CallFunc) client.CallFunc {
 		return func(ctx context.Context, node *registry.Node, req client.Request, rsp interface{}, opts client.CallOptions) error {
-			s := stat(node.Address)
-			s.inflight.Add(1)
-			start := time.Now()
+			done := Track(node.Address)
 			err := next(ctx, node, req, rsp, opts)
-			observe(s, time.Since(start).Nanoseconds(), start.UnixNano())
-			s.inflight.Add(-1)
+			done()
 			return err
 		}
+	}
+}
+
+// Track feeds one call to the node at addr into the strategy, for callers
+// that do not go through the go-micro client (e.g. a gateway): call it
+// when the call starts and the returned func when it ends.
+func Track(addr string) (done func()) {
+	s := stat(addr)
+	s.inflight.Add(1)
+	start := time.Now()
+	return func() {
+		observe(s, time.Since(start).Nanoseconds(), start.UnixNano())
+		s.inflight.Add(-1)
 	}
 }
 
