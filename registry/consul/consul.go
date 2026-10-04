@@ -19,6 +19,10 @@ import (
 	mtls "github.com/flylib/go-micro/util/tls"
 )
 
+// metaVersionKey is the Meta key holding the service version. Consul Meta
+// keys allow only [A-Za-z0-9_-], so it cannot be nacos's "micro.version".
+const metaVersionKey = "micro_version"
+
 type consulRegistry struct {
 	Address []string
 	opts    registry.Options
@@ -277,6 +281,15 @@ func (c *consulRegistry) Register(s *registry.Service, opts ...registry.Register
 	}
 	port, _ := strconv.Atoi(pt)
 
+	// Meta carries node metadata plus the version in plain text: the tags
+	// are zlib+hex encoded, which non-Go readers (e.g. the OpenResty
+	// gateway) cannot decode.
+	meta := make(map[string]string, len(node.Metadata)+1)
+	for k, v := range node.Metadata {
+		meta[k] = v
+	}
+	meta[metaVersionKey] = s.Version
+
 	// register the service
 	asr := &consul.AgentServiceRegistration{
 		ID:      node.Id,
@@ -284,7 +297,7 @@ func (c *consulRegistry) Register(s *registry.Service, opts ...registry.Register
 		Tags:    tags,
 		Port:    port,
 		Address: host,
-		Meta:    node.Metadata,
+		Meta:    meta,
 		Check:   check,
 	}
 
