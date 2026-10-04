@@ -34,8 +34,12 @@ func microError(err *errors.Error) codes.Code {
 		return codes.Unimplemented
 	case http.StatusInternalServerError:
 		return codes.Internal
-	case http.StatusServiceUnavailable:
+	case http.StatusTooManyRequests:
+		return codes.ResourceExhausted
+	case http.StatusBadGateway, http.StatusServiceUnavailable:
 		return codes.Unavailable
+	case http.StatusGatewayTimeout:
+		return codes.DeadlineExceeded
 	}
 
 	return codes.Unknown

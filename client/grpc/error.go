@@ -57,6 +57,8 @@ func microStatusFromGrpcCode(code codes.Code) int32 {
 		return http.StatusUnauthorized
 	case codes.FailedPrecondition:
 		return http.StatusPreconditionFailed
+	case codes.ResourceExhausted:
+		return http.StatusTooManyRequests
 	case codes.Unimplemented:
 		return http.StatusNotImplemented
 	case codes.Internal:
