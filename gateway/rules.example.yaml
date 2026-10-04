@@ -1,0 +1,49 @@
+# Example gateway rules - valid for both gateway/proxy and gateway/openresty.
+# Schema: rules.schema.json · Semantics: SPEC.md section 9.
+version: 1
+
+defaults:
+  convention: true            # /<service>.<Handler>/<Method> -> <service>
+  timeout: { connect: 1s, send: 10s, read: 10s }
+  retries: 2                  # only before the request reached a node
+  selector: { strategy: roundrobin }
+
+global:
+  plugins:                    # run on every call, before route plugins
+    - name: ip-restriction
+      config:
+        deny: ["203.0.113.0/24"]
+    - name: rate-limit
+      config: { rate: 100, burst: 50, key: client_ip }
+
+routes:
+  # Public, read-only method: no auth, its own tighter limit.
+  - name: greeter-hello
+    match: { method: /greeter.Greeter/Hello }
+    plugins:
+      - name: rate-limit
+        config: { rate: 10, burst: 5, key: client_ip }
+
+  # Everything else on orders needs a token issued by auth/jwt;
+  # 5% of traffic goes to the v2 canary.
+  - name: orders
+    match: { service: orders }
+    upstream:
+      selector:
+        version_weights: { v1: 95, v2: 5 }
+      timeout: { read: 30s }
+    plugins:
+      - name: jwt-auth
+        config:
+          public_key: LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KUkVQTEFDRS1XSVRILVJFQUwtS0VZCi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo=
+          scopes: ["orders"]
+      - name: rate-limit
+        config: { rate: 50, burst: 20, key: account }
+
+  # Legacy service whose proto package does not match its registry name.
+  - name: billing-legacy
+    match: { prefix: /billing.v1. }
+    upstream:
+      service: legacy-billing
+      filters:
+        labels: { zone: cn-east }

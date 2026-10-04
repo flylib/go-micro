@@ -1,0 +1,329 @@
+# Gateway Specification
+
+Status: **draft v1** · Applies to: `gateway/proxy` (Go) and `gateway/openresty` (OpenResty/Lua)
+
+go-micro ships two edge gateways with the same behaviour. One is built in Go on top of go-micro itself; the other runs on OpenResty with Lua adapter libraries. This document is the contract both must implement. A rules file written for one gateway works unchanged on the other, and the shared conformance suite (`gateway/conformance`) runs against both.
+
+The key words MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.
+
+## 1. Scope
+
+A gateway accepts gRPC calls from outside the cluster, applies rules (auth, IP control, rate limits), resolves the target go-micro service through the registry and forwards the call to one of its nodes.
+
+The two implementations differ in how they are built:
+
+| | `gateway/proxy` (Go) | `gateway/openresty` |
+|---|---|---|
+| Transport | grpc-go transparent proxy (`UnknownServiceHandler`, raw frames) | nginx `grpc_pass` + `balancer_by_lua` |
+| Registry / selector | go-micro `registry` + `registry/cache`, `selector` strategies and filters | `resty.micro.*` Lua ports that read the same registry data (§4, §5) |
+| Rules source | go-micro `config/source` (etcd, consul, nacos); files polled | Lua readers of the same sources |
+| Plugins | Go, in `gateway/proxy` | Lua |
+| Extension | Go code (compiled in) | Lua (hot-loadable) |
+
+Out of scope for v1 (§13): HTTP/JSON transcoding, distributed rate limiting, the mdns registry.
+
+**Terms**
+- **Rules** — the hot-reloadable routing and policy document (§9).
+- **Bootstrap** — static settings read at start-up (§11).
+- **Node** — one registered instance of a service.
+
+## 2. Wire protocol
+
+- **Inbound:** gRPC over HTTP/2. Cleartext h2c MUST be supported. TLS SHOULD be supported.
+- **Upstream:** gRPC over h2c. Upstream TLS is a bootstrap option (`MICRO_GATEWAY_UPSTREAM_TLS`), because go-micro does not advertise TLS in the registry.
+- **RPC types:** all four MUST be supported — unary, server streaming, client streaming and bidirectional.
+- **Payloads:** messages MUST be forwarded as opaque frames. The gateway never decodes payloads and needs no `.proto` files.
+
+## 3. Routing
+
+### 3.1 Deriving the service from the path
+
+go-micro's gRPC client calls `/<service>.<Handler>/<Method>`, where `<service>` is the registry name (`client/grpc/request.go`, `methodToGRPC`). The gateway inverts this exactly as `util/grpc.ServiceFromMethod` does:
+
+1. Split the path on `/`. The path MUST have three parts with a non-empty middle part, or the call is rejected with `Unimplemented`. This rejection may come from the gRPC library before any gateway code runs (grpc-go does this), so its message is not required to be a go-micro error.
+2. Take the middle part (`greeter.Greeter`).
+3. The service is everything before its **last** `.`.
+
+| Path | Derived service |
+|---|---|
+| `/greeter.Greeter/Hello` | `greeter` |
+| `/go.micro.srv.greeter.Greeter/Hello` | `go.micro.srv.greeter` |
+| `/Greeter/Hello` | *(empty — needs an explicit route)* |
+
+**Convention:** a service's proto `package` equals its registry name. With this convention, no route needs to be configured for the service.
+
+### 3.2 Route matching
+
+Each route in the rules has one `match` (§9.3). For a call, the gateway picks the first route that matches, in this order:
+
+1. `method` — exact full path, e.g. `/greeter.Greeter/Hello`.
+2. `prefix` — longest matching path prefix wins.
+3. `service` — the derived service (§3.1) equals this value.
+
+If no route matches:
+
+- With `defaults.convention: true` (the default), the call goes to the derived service using `defaults` settings.
+- Otherwise, or when the derived service is empty, the call is rejected with `Unimplemented` (§8).
+
+A route's `upstream.service` overrides the derived service. This is how paths that do not follow the convention are mapped.
+
+## 4. Service discovery
+
+### 4.1 Common model
+
+Every backend is normalised to go-micro's `registry.Service` shape:
+
+```
+{ name, version, metadata, endpoints[], nodes[{ id, address "host:port", metadata }] }
+```
+
+Nodes of the same service with different versions are separate `Service` entries, as in Go.
+
+### 4.2 Backends
+
+Implementations MUST read the data exactly as go-micro writes it. Neither gateway may require services to register differently.
+
+**etcd** (`registry/etcd`)
+- **Key:** `/micro/registry/<service>/<node-id>`. Any `/` inside the service name or node id is replaced with `-`.
+- **Value:** JSON of a `registry.Service` holding exactly one node. The key is bound to a lease, so an expired node disappears with its key.
+- **Read:** range over `/micro/registry/<service>/`, then watch that prefix.
+
+**Consul** (`registry/consul`)
+- **One Consul service per node:** `ID` = node id, `Name` = service, `Address`/`Port` = node address, `Meta` = node metadata in plain text.
+- **Version:** read from `Meta["micro_version"]` (framework change F1, §12). Consul Meta keys allow only `[A-Za-z0-9_-]`, so this key cannot match Nacos's `micro.version`.
+- **Tags:** version and endpoints are also stored in zlib+hex-encoded tags (`v-…`, `e-…`). Implementations MUST NOT depend on decoding tags.
+- **Read:** `/v1/health/service/<service>?passing=true`. Blocking queries SHOULD be used.
+
+**Nacos** (`registry/nacos`)
+- **Instance:** `ServiceName` = service, `GroupName` = configured group (default `DEFAULT_GROUP`), `Ip`/`Port` = node address. Instances are ephemeral.
+- **Metadata:** node metadata plus `micro.version`.
+- **Read:** the instance list with `healthyOnly=true`, honouring the namespace and group set in bootstrap.
+- **Endpoints:** not stored.
+
+### 4.3 Node eligibility
+
+A node is eligible only if all of these hold:
+- its metadata has `protocol == "grpc"`. Nodes with `protocol == "mucp"` or no protocol MUST be skipped.
+- the backend reports it healthy (Consul passing, Nacos healthy). An etcd key that exists counts as healthy.
+- it passes the route's filters (§5.2).
+
+### 4.4 Caching and failure
+
+- Changes in the registry MUST take effect within **5 s** (by watch or poll).
+- If the registry is unreachable, the gateway MUST keep serving from the last known node list. It MUST NOT drop all routes.
+- A service with no eligible nodes is rejected with `Unavailable` (§8).
+
+## 5. Load balancing
+
+### 5.1 Strategies
+
+Names and semantics match go-micro's `selector` packages. They are set per route in `upstream.selector.strategy`.
+
+| Strategy | Semantics | Go equivalent |
+|---|---|---|
+| `roundrobin` (default) | Rotate over eligible nodes | `selector.RoundRobin` |
+| `random` | Uniform random | `selector.Random` |
+| `weighted` | Weight from node metadata `weight`, default 100, negative ignored | `selector/weighted.Strategy` |
+| `p2c` | Power of two choices on EWMA latency × (inflight + 1) | `selector/p2c.Strategy` |
+
+`upstream.selector.version_weights` (e.g. `{v1: 95, v2: 5}`) splits traffic between versions, as `weighted.VersionWeights` does:
+- Versions that are not listed get no traffic.
+- Nodes within a version share that version's weight equally.
+- When set, it replaces `strategy`.
+
+### 5.2 Filters
+
+`upstream.filters` narrows the eligible nodes before the strategy runs. These mirror `selector.FilterVersion`, `FilterLabel` and `FilterEndpoint`.
+
+- **`version`** — keep services with this version.
+- **`labels`** — keep nodes whose metadata contains every given key/value pair.
+- **`endpoint`** — keep services that list the called endpoint (`<Handler>.<Method>`). Endpoint lists exist only in etcd. With other registries this filter MUST be rejected when the rules are loaded (§10), rather than silently passing every node.
+
+## 6. Timeouts and retries
+
+- **Timeouts** come from `defaults.timeout`, overridable per route: `connect` (default `1s`), `send` (default `10s`), `read` (default `10s`). `read` is the idle time allowed between upstream frames.
+- **Client deadline:** when the client sends `grpc-timeout`, the effective deadline is the smaller of `grpc-timeout` and the route's limits. `grpc-timeout` MUST be forwarded upstream.
+- **Retries:** `retries` (default `2`) is the number of extra nodes tried. A retry MUST happen only if nothing has been written to the upstream yet — that is, on connect failure, refusal, or a reset before the request was sent. A call whose request reached an upstream MUST NOT be retried, whatever the response. This keeps retries safe for non-idempotent methods.
+- **Streams** follow the same rule. A stream is retried only before its first frame has been sent.
+
+The short connect timeout plus pre-send retry is what lets a node that has just stopped fail over cleanly. The node is still in the cache until the next registry update (§4.4).
+
+## 7. Headers
+
+gRPC metadata keys are case-insensitive. go-micro's `metadata.Get` also handles title-cased keys.
+
+| Header | Gateway behaviour |
+|---|---|
+| `traceparent` | Forward if present and valid. Otherwise MUST generate one, so service logs (`wrapper/logging`) carry a `trace_id`. |
+| `grpc-timeout` | Forward (§6). |
+| `authorization` | Forward unchanged, so services can still verify the token themselves with `wrapper/auth`. |
+| `x-forwarded-for` | Append the client IP. |
+| `micro-gateway-*` | **Reserved.** Inbound values MUST be stripped, then set by the gateway. |
+| `micro-gateway-account` | Set to the JWT `sub` after a successful `jwt-auth` (§9.5). |
+| `micro-gateway-route` | Set to the name of the matched route. |
+
+**Client IP.** The client IP is the TCP peer address. When the peer is in bootstrap `MICRO_GATEWAY_TRUSTED_PROXIES`, the gateway takes the right-most `x-forwarded-for` entry that is not itself a trusted proxy.
+
+## 8. Errors
+
+**Upstream errors** — status, message and trailers — MUST pass through unchanged.
+
+**Gateway-originated errors** MUST look like a go-micro service error:
+- `grpc-message` is the JSON of `errors.Error`: `{"id":"micro.gateway","code":<http>,"detail":"…","status":"<http status text>"}`
+- `grpc-status` is the code from this table.
+
+The table extends `server/grpc/error.go`. Codes 429, 502 and 504 are missing there today and are added by framework change F2 (§12).
+
+| Situation | `code` | gRPC status |
+|---|---|---|
+| No route, empty derived service | 501 | `Unimplemented` |
+| Missing or invalid credentials | 401 | `Unauthenticated` |
+| Denied by IP rule or missing scope | 403 | `PermissionDenied` |
+| Rate limited | 429 | `ResourceExhausted` |
+| No eligible nodes | 503 | `Unavailable` |
+| All tries failed to connect | 502 | `Unavailable` |
+| Deadline or timeout exceeded at the gateway | 504 | `DeadlineExceeded` |
+| Internal gateway fault | 500 | `Internal` |
+
+Gateway errors MUST be gRPC responses (HTTP 200 with grpc-status trailers). A bare HTTP 4xx/5xx makes clients report a transport error instead.
+
+## 9. Rules
+
+### 9.1 Format
+
+YAML or JSON, validated against [`rules.schema.json`](rules.schema.json). [`rules.example.yaml`](rules.example.yaml) shows every field.
+
+Durations are strings such as `"500ms"`, `"1s"` or `"2m"`.
+
+### 9.2 Structure
+
+```yaml
+version: 1
+defaults:      # applied to every route and to convention routing
+global:        # plugins run on every call, before route plugins
+routes:        # ordered list
+```
+
+### 9.3 Route
+
+```yaml
+- name: greeter-canary              # unique, used in logs and micro-gateway-route
+  match: { service: greeter }       # exactly one of: method | prefix | service
+  upstream:
+    service: greeter                # optional, defaults to the derived service
+    selector: { strategy: roundrobin, version_weights: { v1: 90, v2: 10 } }
+    filters:  { version: v2, labels: { zone: a } }
+    timeout:  { connect: 1s, send: 10s, read: 10s }
+    retries:  2
+  plugins:
+    - name: jwt-auth
+      config: { … }
+```
+
+Fields left out of a route fall back to `defaults`.
+
+### 9.4 Plugins
+
+- A plugin entry is `{name, config}`. Execution order is `global.plugins`, then the route's `plugins`, each in list order. All plugins run before node selection.
+- A plugin may end the call with a gateway error (§8). Otherwise the next plugin runs.
+- **Unknown plugin names MUST cause the rules to be rejected (§10).** This prevents a typo from silently disabling a security rule.
+- Implementation-specific plugins MUST use the `x-` prefix (e.g. `x-lua-script`). A gateway that does not know an `x-` plugin MUST also reject the rules.
+
+### 9.5 Standard plugins (v1)
+
+Both implementations MUST provide these plugins with these exact names and fields.
+
+**`ip-restriction`**
+- **Fields:** `allow: [CIDR]`, `deny: [CIDR]`. IPv4 and IPv6 are both accepted.
+- **Order:** `deny` is checked first. If `allow` is non-empty and the client IP (§7) is not in it, the call is rejected with 403.
+
+**`jwt-auth`** — compatible with tokens issued by `auth/jwt`
+- **Fields:** `public_key` (base64-encoded PEM, the same encoding as `auth/jwt/token.WithPublicKey`) and an optional `scopes: [string]`.
+- **Algorithm:** RS256 only. Tokens signed with any other `alg` MUST be rejected.
+- **Token:** read from `authorization: Bearer <token>`. The gateway verifies the signature and `exp` (with up to 30 s of clock skew).
+- **Scopes:** with `scopes` set, the token's `scopes` claim must contain at least one of them, or the call is rejected with 403.
+- **Errors:** a missing, malformed or expired token is rejected with 401.
+- **On success:** sets `micro-gateway-account` = `sub`.
+
+**`rate-limit`** — token bucket, local to each gateway instance
+- **Fields:** `rate` (requests per second, > 0), `burst` (≥ 0), `key`.
+- **Bucket:** refills at `rate` tokens per second and holds `1 + burst` tokens, starting full. Each call takes one token. This matches nginx `limit_req` with `nodelay`, and Go's `rate.NewLimiter(rate, 1+burst)`.
+- **Key:** one of `client_ip`, `account` (falls back to `client_ip` when unauthenticated) or `header:<name>`.
+- **Errors:** rejected with 429.
+
+## 10. Rules loading and hot reload
+
+1. A new rules document MUST be fully validated before use: schema (§9.1), plugin names (§9.4) and backend-dependent checks (§5.2).
+2. **Valid:** swap it in atomically. Calls already in flight finish on the old rules; new calls use the new ones.
+3. **Invalid:** keep the previous rules, log the reason, and expose the failure through a log line and a metric.
+4. **At start-up:** a missing or invalid rules document MUST stop the gateway from starting. Running with no rules is only possible with an explicit `MICRO_GATEWAY_RULES=none`, which means convention routing with no plugins.
+5. **Timing:** a change in the rules source MUST take effect within **5 s**.
+
+## 11. Bootstrap
+
+Static settings, read once. Names reuse go-micro's existing environment variables where one exists. Both implementations MUST accept these names, either as environment variables or as equivalent flags.
+
+| Setting | Meaning |
+|---|---|
+| `MICRO_GATEWAY_ADDRESS` | Listen address, default `:8080` |
+| `MICRO_REGISTRY` | `etcd`, `consul` or `nacos` |
+| `MICRO_REGISTRY_ADDRESS` | Comma-separated `host:port` list |
+| `MICRO_REGISTRY_NAMESPACE` / `MICRO_REGISTRY_GROUP` | Nacos namespace and group |
+| `MICRO_GATEWAY_RULES` | Rules source URI, see below |
+| `MICRO_GATEWAY_TRUSTED_PROXIES` | Comma-separated CIDRs (§7) |
+| `MICRO_GATEWAY_UPSTREAM_TLS` | `true` to dial nodes with TLS |
+
+**Rules sources** map onto go-micro's `config/source` backends:
+
+```
+file:///etc/micro/gateway/rules.yaml
+etcd://host:2379/micro/gateway/rules                   # value of one key
+consul://host:8500/micro/gateway/rules                 # one KV key
+nacos://host:8848/micro-gateway-rules?group=DEFAULT_GROUP&namespace=public
+```
+
+The rules backend is independent of `MICRO_REGISTRY`. For example, rules can live in Nacos while services register in etcd.
+
+## 12. Framework changes this spec depends on
+
+| ID | Change | Why | Status |
+|---|---|---|---|
+| F1 | `registry/consul`: also write the version as `Meta["micro_version"]` in plain text. Backward compatible. | Lua cannot decode the zlib+hex tags (§4.2). | Done |
+| F2 | `server/grpc/error.go` and the gRPC client: map 429 ↔ `ResourceExhausted`, 502 → `Unavailable`, 504 → `DeadlineExceeded`. | Gateway and service errors must map the same way (§8). | Done |
+| F3 | `server/grpc`: the global `proto` codec it installs also handles legacy v1 messages, as `client/grpc`'s already did (#2333). | Without it, any binary with the gRPC server and the etcd registry fails to register (`grpc: error while marshaling: invalid message`). Found by the conformance harness. | Done |
+| F4 | `selector/p2c`: export `Track(addr)` to feed latency and in-flight counts from outside the go-micro client. | The Go gateway's `p2c` strategy (§5.1). | Done |
+| F5 | `registry/nacos`: the watcher diffs each pushed snapshot and emits per-node `create`/`delete` results grouped by version. | It emitted the whole snapshot as one `update`, which `registry/cache` merges, so removed nodes stayed cached and all versions were merged into one (§4.4, §5.1). Found by the conformance suite. | Done |
+
+## 13. Out of scope for v1
+
+- **HTTP/JSON to gRPC transcoding.**
+- **Distributed rate limiting** (shared counters across gateway instances).
+- **Upstream mTLS** beyond the single TLS switch.
+- **mdns registry:** not reachable from OpenResty, and multicast is unsuitable at the edge anyway.
+
+## 14. Conformance
+
+`gateway/conformance` runs the cases below against a gateway address. Each case states the expected gRPC status. Both implementations MUST pass all of them before release. How to run the suite is described in [conformance/README.md](conformance/README.md).
+
+| ID | Case |
+|---|---|
+| R1 | Convention route: `/greeter.Greeter/Hello` reaches `greeter` |
+| R2 | Explicit `method` route beats `prefix`, which beats `service` |
+| R3 | `/Greeter/Hello` with no route → `Unimplemented` |
+| R4 | Malformed path → `Unimplemented` (message not checked, §3.1) |
+| D1 | Scale 2 → 3 nodes: the new node receives traffic within 5 s |
+| D2 | Scale 3 → 1 under constant load: no failed calls (§6) |
+| D3 | Nodes with `protocol=mucp` never receive traffic |
+| D4 | Registry stops: calls keep succeeding on cached nodes |
+| L1 | `version_weights {v1: 100, v2: 0}` sends nothing to v2 |
+| E1 | Service returns `errors.BadRequest` → client sees `InvalidArgument` with the go-micro JSON unchanged |
+| E2 | No eligible nodes → `Unavailable`, `grpc-message` is go-micro JSON with `id: micro.gateway` |
+| H1 | Call without `traceparent`: the service receives a valid generated one |
+| H2 | Inbound `micro-gateway-account` from the client is not seen by the service |
+| P1 | `ip-restriction` deny → `PermissionDenied` |
+| P2 | `jwt-auth`: no token → `Unauthenticated`; token from `auth/jwt` → OK and `micro-gateway-account` = `sub` |
+| P3 | `jwt-auth`: HS256 token signed with the public key → `Unauthenticated` (algorithm confusion) |
+| P4 | `rate-limit` `{rate: 1, burst: 0}`: second immediate call → `ResourceExhausted` |
+| P5 | Rules with an unknown plugin are rejected; previous rules stay active |
+| C1 | Rules changed in the source take effect within 5 s, with no failed calls during the swap |
+| S1 | Server-streaming and bidirectional calls are forwarded |
