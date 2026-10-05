@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -68,6 +69,10 @@ type grpcServer struct {
 
 	// registry service instance
 	rsvc *registry.Service
+
+	// set when Stop begins: the health service reports NOT_SERVING while
+	// the server deregisters and drains
+	stopping atomic.Bool
 }
 
 func init() {
@@ -154,6 +159,7 @@ func (g *grpcServer) configure(opts ...server.Option) {
 	}
 
 	g.srv = grpc.NewServer(gopts...)
+	g.registerHealth(g.srv)
 }
 
 func (g *grpcServer) getMaxMsgSize() int {
@@ -979,6 +985,7 @@ func (g *grpcServer) Start() error {
 				break Loop
 			}
 		}
+		g.stopping.Store(true)
 
 		// deregister self
 		if err := g.Deregister(); err != nil {
@@ -1021,6 +1028,7 @@ func (g *grpcServer) Start() error {
 	// mark the server as started
 	g.Lock()
 	g.started = true
+	g.stopping.Store(false)
 	g.Unlock()
 
 	return nil
