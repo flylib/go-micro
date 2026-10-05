@@ -4,14 +4,14 @@ go 1.26.0
 
 require (
 	github.com/coder/websocket v1.8.15
-	github.com/flylib/go-micro v0.0.0-20261005063438-00e6294a60a5
-	github.com/flylib/go-micro/broker/nats v0.0.0-20261005063438-00e6294a60a5
-	github.com/flylib/go-micro/config/source/consul v0.0.0-20261005063438-00e6294a60a5
-	github.com/flylib/go-micro/config/source/etcd v0.0.0-20261005063438-00e6294a60a5
-	github.com/flylib/go-micro/config/source/nacos v0.0.0-20261005063438-00e6294a60a5
-	github.com/flylib/go-micro/registry/consul v0.0.0-20261005063438-00e6294a60a5
-	github.com/flylib/go-micro/registry/etcd v0.0.0-20261005063438-00e6294a60a5
-	github.com/flylib/go-micro/registry/nacos v0.0.0-20261005063438-00e6294a60a5
+	github.com/flylib/go-micro v0.0.0-20261005065114-0e9978774ab2
+	github.com/flylib/go-micro/broker/nats v0.0.0-20261005065114-0e9978774ab2
+	github.com/flylib/go-micro/config/source/consul v0.0.0-20261005065114-0e9978774ab2
+	github.com/flylib/go-micro/config/source/etcd v0.0.0-20261005065114-0e9978774ab2
+	github.com/flylib/go-micro/config/source/nacos v0.0.0-20261005065114-0e9978774ab2
+	github.com/flylib/go-micro/registry/consul v0.0.0-20261005065114-0e9978774ab2
+	github.com/flylib/go-micro/registry/etcd v0.0.0-20261005065114-0e9978774ab2
+	github.com/flylib/go-micro/registry/nacos v0.0.0-20261005065114-0e9978774ab2
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/valyala/fasthttp v1.74.0

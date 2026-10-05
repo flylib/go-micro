@@ -2,7 +2,7 @@ module github.com/flylib/go-micro/wrapper/shedding
 
 go 1.26.0
 
-require github.com/flylib/go-micro v0.0.0-20261005063438-00e6294a60a5
+require github.com/flylib/go-micro v0.0.0-20261005065114-0e9978774ab2
 
 require (
 	github.com/ebitengine/purego v0.10.0 // indirect

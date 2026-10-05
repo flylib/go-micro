@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/events/natsjs
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261005063438-00e6294a60a5
+	github.com/flylib/go-micro v0.0.0-20261005065114-0e9978774ab2
 	github.com/google/uuid v1.6.0
 	github.com/nats-io/nats-server/v2 v2.11.3
 	github.com/nats-io/nats.go v1.42.0

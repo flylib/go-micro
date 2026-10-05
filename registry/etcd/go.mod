@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/registry/etcd
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261005063438-00e6294a60a5
+	github.com/flylib/go-micro v0.0.0-20261005065114-0e9978774ab2
 	github.com/mitchellh/hashstructure v1.1.0
 	go.etcd.io/etcd/api/v3 v3.7.0
 	go.etcd.io/etcd/client/v3 v3.7.0
