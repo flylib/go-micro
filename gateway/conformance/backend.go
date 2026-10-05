@@ -17,6 +17,8 @@ import (
 	"github.com/flylib/go-micro/server"
 	grpcserver "github.com/flylib/go-micro/server/grpc"
 	pb "google.golang.org/grpc/interop/grpc_testing"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // echo is what every backend reply carries in Payload.Body, so a test can
@@ -26,6 +28,7 @@ type echo struct {
 	Version  string            `json:"version"`
 	Node     string            `json:"node"`
 	Metadata map[string]string `json:"metadata"`
+	Request  json.RawMessage   `json:"request,omitempty"` // as the service decoded it
 }
 
 // header looks a key up case-insensitively: gRPC lowercases keys, go-micro
@@ -139,10 +142,14 @@ type TestService struct{ b *backend }
 // that must tell two paths of one service apart.
 type Alt struct{ *TestService }
 
-func (s *TestService) reply(ctx context.Context) *pb.Payload {
+func (s *TestService) reply(ctx context.Context, req proto.Message) *pb.Payload {
 	s.b.calls.Add(1)
 	md, _ := metadata.FromContext(ctx)
-	body, _ := json.Marshal(echo{Service: s.b.name, Version: s.b.version, Node: s.b.id, Metadata: md})
+	e := echo{Service: s.b.name, Version: s.b.version, Node: s.b.id, Metadata: md}
+	if req != nil {
+		e.Request, _ = protojson.MarshalOptions{UseProtoNames: true}.Marshal(req)
+	}
+	body, _ := json.Marshal(e)
 	return &pb.Payload{Body: body}
 }
 
@@ -152,7 +159,7 @@ func (s *TestService) UnaryCall(ctx context.Context, req *pb.SimpleRequest, rsp 
 	if st := req.GetResponseStatus(); st != nil && st.Code != 0 {
 		return merr.New(s.b.name, st.Message, st.Code)
 	}
-	rsp.Payload = s.reply(ctx)
+	rsp.Payload = s.reply(ctx, req)
 	return nil
 }
 
@@ -169,7 +176,7 @@ func (s *TestService) StreamingOutputCall(ctx context.Context, stream server.Str
 		return err
 	}
 	for range req.GetResponseParameters() {
-		if err := stream.Send(&pb.StreamingOutputCallResponse{Payload: s.reply(ctx)}); err != nil {
+		if err := stream.Send(&pb.StreamingOutputCallResponse{Payload: s.reply(ctx, nil)}); err != nil {
 			return err
 		}
 	}
@@ -186,7 +193,7 @@ func (s *TestService) FullDuplexCall(ctx context.Context, stream server.Stream) 
 			}
 			return err
 		}
-		if err := stream.Send(&pb.StreamingOutputCallResponse{Payload: s.reply(ctx)}); err != nil {
+		if err := stream.Send(&pb.StreamingOutputCallResponse{Payload: s.reply(ctx, nil)}); err != nil {
 			return err
 		}
 	}

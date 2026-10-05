@@ -17,6 +17,10 @@
     "routes": {
       "type": "array",
       "items": { "$ref": "#/$defs/route" }
+    },
+    "http_rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/http_rule" }
     }
   },
   "$defs": {
@@ -158,6 +162,13 @@
                   "type": "array",
                   "minItems": 1,
                   "items": { "type": "string", "minLength": 1 }
+                },
+                "forward_claims": {
+                  "type": "object",
+                  "minProperties": 1,
+                  "propertyNames": { "pattern": "^[a-z0-9][a-z0-9_.-]*$" },
+                  "additionalProperties": { "type": "string", "minLength": 1 },
+                  "description": "Upstream metadata key -> token claim, e.g. {user-id: sub} (SPEC.md 9.5)."
                 }
               }
             }
@@ -194,6 +205,24 @@
           }
         }
       ]
+    },
+    "http_rule": {
+      "type": "object",
+      "description": "REST mapping for the HTTP/JSON entry, after google.api.http (SPEC.md 2.2, 9.6).",
+      "required": ["method", "path", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "method": { "enum": ["GET", "PUT", "POST", "DELETE", "PATCH"] },
+        "path": { "type": "string", "pattern": "^/" },
+        "target": { "type": "string", "pattern": "^/[^/]+/[^/]+$" },
+        "body": { "type": "string", "pattern": "^(\\*|[A-Za-z_][A-Za-z0-9_.]*)?$" },
+        "response_body": { "type": "string", "pattern": "^([A-Za-z_][A-Za-z0-9_.]*)?$" },
+        "params": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_.]*$" },
+          "additionalProperties": { "enum": ["string", "number", "bool", "repeated"] }
+        }
+      }
     },
     "cidrs": {
       "type": "array",

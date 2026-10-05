@@ -69,6 +69,48 @@ The rules of §7 then apply unchanged, including reserved `micro-gateway-*` head
 
 **Unary only.** The entry carries unary calls. A reply with more than one message is answered with 500.
 
+### 2.2 HTTP rules (`google.api.http` transcoding)
+
+On the HTTP/JSON entry, a gateway that offers it MUST also serve the `http_rules` of the rules document (§9.6). An HTTP rule maps a REST-style call such as `GET /v1/users/42?verbose=true` onto a gRPC method. It follows the [`google.api.http`](https://github.com/googleapis/googleapis/blob/master/google/api/http.proto) annotation: `protoc-gen-micro-gateway` generates the rules from those annotations, or they can be written by hand.
+
+**Matching.** A request is matched against the HTTP rules before the `/api/...` mapping of §2.1. A rule matches when its `method` equals the request method and its path template matches the request path. When several rules match, the most specific one wins:
+1. more literal segments;
+2. then fewer `**` wildcards;
+3. then document order.
+
+When no rule matches, §2.1 applies: `/api/...` paths are mapped as before, and anything else is answered with 404.
+
+**Path templates** use the `google.api.http` syntax:
+
+| Element | Matches | Binds |
+|---|---|---|
+| `literal` | that segment | — |
+| `*` | one segment | — |
+| `**` | zero or more segments; last element only | — |
+| `{field}` | one segment | `field` |
+| `{field=pattern}` | `pattern`, made of literals, `*` and a final `**` | `field`, to the matched segments joined by `/` |
+| `:verb` | a final `:verb` on the last segment | — |
+
+`field` may be a dotted path (`user.id`), which sets a nested field. Templates match the raw (still percent-encoded) path, so `{field}` takes exactly one raw segment. Bound values are then percent-decoded, so a value may contain `/` when the client sent `%2F`.
+
+**The request message** is a JSON object built from three sources, then sent like an HTTP/JSON entry call (§2.1):
+- **The body**, depending on `body`:
+  - `"*"`: the request body is the message.
+  - `"<field>"`: the request body becomes that field.
+  - empty or absent: there is no body, and the request body MUST be empty or `{}`.
+- **Path variables**, set into the object. They override what the body set.
+- **Query parameters**, except when `body` is `"*"`. `a.b=x` sets a nested field. A repeated key gives a list. A parameter naming a field already set by the path is ignored, as are parameters the rule's `params` does not list (when it lists any).
+
+**Values.** Path and query values are strings. That is enough for proto3 JSON, which accepts strings for every numeric type and for enums. Two kinds of field need to know their type, and get it from the rule's `params` map (field path → type):
+- `bool` turns `true`/`false` into JSON booleans; any other value is rejected with 400.
+- `repeated` always makes a list, even for a single value.
+
+Fields not listed in `params` stay strings. `protoc-gen-micro-gateway` fills `params` from the request message.
+
+**The reply.** With `response_body: "<field>"`, the HTTP body is that field of the JSON response message. Otherwise it is the whole message. Errors are as in §2.1.
+
+**After matching**, the call is the gRPC call to the rule's `target` (`/<service>.<Handler>/<Method>`), and §3 to §8 apply as for any call.
+
 ## 3. Routing
 
 ### 3.1 Deriving the service from the path
@@ -237,6 +279,7 @@ version: 1
 defaults:      # applied to every route and to convention routing
 global:        # plugins run on every call, before route plugins
 routes:        # ordered list
+http_rules:    # REST mappings for the HTTP/JSON entry (§2.2, §9.6)
 ```
 
 ### 9.3 Route
@@ -279,12 +322,27 @@ Both implementations MUST provide these plugins with these exact names and field
 - **Scopes:** with `scopes` set, the token's `scopes` claim must contain at least one of them, or the call is rejected with 403.
 - **Errors:** a missing, malformed or expired token is rejected with 401.
 - **On success:** sets `micro-gateway-account` = `sub`.
+- **Forwarding claims:** `forward_claims` (optional, metadata key → claim name) copies string or number claims of the verified token into upstream metadata, for example `{user-id: sub}`. Keys are lowercase metadata names. Inbound values of every key named in any `forward_claims` of the loaded rules are removed on every call, on every route, as for reserved headers (§7). So clients cannot set them, not even on routes without `jwt-auth`. This is how services receive the caller's user id.
 
 **`rate-limit`** — token bucket, local to each gateway instance
 - **Fields:** `rate` (requests per second, > 0), `burst` (≥ 0), `key`.
 - **Bucket:** refills at `rate` tokens per second and holds `1 + burst` tokens, starting full. Each call takes one token. This matches nginx `limit_req` with `nodelay`, and Go's `rate.NewLimiter(rate, 1+burst)`.
 - **Key:** one of `client_ip`, `account` (falls back to `client_ip` when unauthenticated) or `header:<name>`.
 - **Errors:** rejected with 429.
+
+### 9.6 HTTP rules
+
+```yaml
+http_rules:
+  - method: GET                     # GET | PUT | POST | DELETE | PATCH
+    path: /v1/users/{id}            # template (§2.2)
+    target: /user.User/Get          # gRPC method
+    body: ""                        # "", "*" or a field name
+    response_body: ""               # "" or a field name
+    params: {id: string, verbose: bool, tags: repeated}
+```
+
+Semantics are in §2.2. Two rules with the same `method` and `path` are rejected (§10).
 
 ## 10. Rules loading and hot reload
 
@@ -374,3 +432,10 @@ The rules backend is independent of `MICRO_REGISTRY`. For example, rules can liv
 | J4 | No eligible nodes → HTTP 503, body is a go-micro error with `id: micro.gateway` |
 | J5 | `jwt-auth`: no token → 401; valid token → 200 with `micro-gateway-account` = `sub`; client headers reach the service, reserved ones do not, `traceparent` is generated |
 | J6 | `GET` → 405; path with too few segments → 404; `Content-Type: text/plain` → 415 |
+| T1 | HTTP rule `GET /v1/<svc>/size/{response_size}`: the path variable reaches the service as that numeric field; `?fill_username=true` with `params: {fill_username: bool}` arrives as a boolean; `?response_status.message=hi` sets the nested field |
+| T2 | `body: "*"`: the JSON body is the message, and a path variable overrides the same field in it; query parameters are ignored |
+| T3 | `body: "payload"`: the request body becomes that field, and query parameters fill the others |
+| T4 | `response_body: "payload"`: the HTTP body is that field only |
+| T5 | Specificity: `GET /v1/<svc>/items/special` beats `GET /v1/<svc>/items/{id}`, which beats `GET /v1/<svc>/**` |
+| T6 | No HTTP rule matches and the path is not `/api/...` → 404; a `bool` param that is not `true`/`false` → 400 |
+| T7 | `jwt-auth` with `forward_claims: {user-id: sub}`: the service receives `user-id` = `sub`, and a client-sent `user-id` header never reaches it |
