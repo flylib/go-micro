@@ -50,9 +50,13 @@ var httpOnlyHeaders = map[string]bool{
 // in an existing server. ServeAPI serves it with h2c as well.
 func (g *Gateway) HTTPHandler() http.Handler {
 	r := chi.NewRouter()
-	// HTTP rules are matched before the /api routes (SPEC 2.2)
+	// /ws, then HTTP rules, are matched before the /api routes (SPEC 2.2, 2.3)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if req.URL.Path == wsPath {
+				g.serveWS(w, req)
+				return
+			}
 			if !g.serveRule(w, req) {
 				next.ServeHTTP(w, req)
 			}

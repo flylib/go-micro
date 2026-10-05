@@ -11,6 +11,8 @@
 //	MICRO_GATEWAY_RULES            rules source URI, or "none"
 //	MICRO_GATEWAY_TRUSTED_PROXIES  comma-separated CIDRs
 //	MICRO_GATEWAY_UPSTREAM_TLS     "true" to dial nodes with TLS
+//	MICRO_BROKER                   nats, or empty: broker for WebSocket push and topics
+//	MICRO_BROKER_ADDRESS           comma-separated broker addresses
 package main
 
 import (
@@ -22,6 +24,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/flylib/go-micro/broker"
+	"github.com/flylib/go-micro/broker/nats"
 	"github.com/flylib/go-micro/gateway/proxy"
 	"github.com/flylib/go-micro/logger"
 	"github.com/flylib/go-micro/registry"
@@ -63,6 +67,13 @@ func run() error {
 			return fmt.Errorf("MICRO_GATEWAY_TRUSTED_PROXIES: %w", err)
 		}
 		opts = append(opts, proxy.TrustedProxies(prefixes...))
+	}
+	switch b := os.Getenv("MICRO_BROKER"); b {
+	case "":
+	case "nats":
+		opts = append(opts, proxy.Broker(nats.NewNatsBroker(broker.Addrs(split(os.Getenv("MICRO_BROKER_ADDRESS"))...))))
+	default:
+		return fmt.Errorf("MICRO_BROKER must be nats or empty, got %q", b)
 	}
 	if os.Getenv("MICRO_GATEWAY_UPSTREAM_TLS") == "true" {
 		opts = append(opts, proxy.UpstreamTLS(&tls.Config{MinVersion: tls.VersionTLS12}))

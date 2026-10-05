@@ -26,6 +26,7 @@ It is configured by the bootstrap settings of [SPEC.md §11](../SPEC.md#11-boots
 | `MICRO_GATEWAY_RULES` | — | Rules source: `file://`, `etcd://`, `consul://` or `nacos://`. `none` means convention routing with no plugins. |
 | `MICRO_GATEWAY_TRUSTED_PROXIES` | — | CIDRs whose `x-forwarded-for` is trusted |
 | `MICRO_GATEWAY_UPSTREAM_TLS` | `false` | Dial nodes with TLS |
+| `MICRO_BROKER`, `MICRO_BROKER_ADDRESS` | — | `nats` and its addresses: the broker for WebSocket push and topics |
 
 **Behaviour on bad rules.** If the rules document is missing or invalid at start-up, the gateway refuses to start. If a later update is invalid, the gateway logs the error and keeps the previous rules.
 
@@ -68,6 +69,51 @@ curl 'localhost:8090/v1/users/42?verbose=true'   # -> /users.Users/Get {"id":"42
 - **Caller identity.** Pair the rules with `jwt-auth` `forward_claims: {user-id: sub}` to give services the caller's id in metadata (§9.5). Clients cannot set those keys themselves.
 - **Implementation.** [httprules.go](httprules.go) does the template parsing, matching and request building, shared by the net/http and fasthttp entries. Numbers in the body are kept exact (`json.Number`).
 
+## WebSocket entry
+
+The WebSocket entry ([SPEC.md §2.3](../SPEC.md#23-websocket-entry-optional)) runs on the HTTP entry's address, at `GET /ws`, when the rules have a `websocket` section. One connection carries:
+- **calls** and **streams** to any service;
+- **topic subscriptions**;
+- **pushes** to the connection's account.
+
+Every message is a JSON object:
+
+```js
+const ws = new WebSocket("wss://api.example.com/ws?access_token=" + token, "micro.v1")
+ws.send(JSON.stringify({id: "1", type: "call", method: "/users.Users/Get", body: {id: "42"}}))
+ws.send(JSON.stringify({id: "2", type: "subscribe", topic: "room.42"}))
+// ← {"id":"1","type":"reply","body":{...}}
+// ← {"id":"2","type":"subscribed","topic":"room.42"}
+// ← {"type":"event","topic":"room.42","body":{...}}   published by a service
+// ← {"type":"push","body":{...}}                      pushed to this account
+```
+
+```yaml
+websocket:
+  plugins:                       # run once, at the handshake
+    - name: jwt-auth
+      config: {public_key: "...", forward_claims: {user-id: sub}}
+  topics: ["room.*", "user.{account}.>"]
+```
+
+- **Calls and streams.** `call` is unary. `stream` covers server, client and bidirectional streaming, with `send`, `close_send` and `cancel`. Each one goes through routes, plugins, discovery and retries like a gRPC call. It carries the handshake headers plus its own `metadata`. Errors are go-micro error objects, as on the HTTP entry.
+- **Identity.** Browsers pass the token as `?access_token=`. `jwt-auth` in `websocket.plugins` makes the token's `sub` the connection's account. Its `forward_claims` reach every call, and clients cannot set those keys themselves.
+- **Push.** Services publish with [`gateway/push`](../push):
+  ```go
+  push.New(svc.Options().Broker).ToUser(ctx, "user-42", msg)
+  push.New(svc.Options().Broker).ToTopic(ctx, "room.42", msg)
+  ```
+  The gateway subscribes on the broker (`MICRO_BROKER=nats`) once per account or topic with an open connection. So every gateway instance delivers to its own connections, and a user with several devices gets the message on each.
+- **Delivery is at most once.** Keep anything that must not be lost in a service, and let clients fetch it after reconnecting.
+- **Limits.**
+  - 4 MiB per message.
+  - `max_calls` open calls and streams per connection (default 100).
+  - Pings every 30 s, and connections that do not answer are closed.
+  - A client that stops reading until its push queue is full is closed with 1008.
+  - A slow client slows down its own calls instead of losing their messages.
+- **Origins.** Any origin may connect, since clients authenticate with tokens, not cookies.
+- **Server.** The fasthttp entry does not serve `/ws`. Use the default `nethttp` server.
+
 ## As a library
 
 ```go
@@ -75,6 +121,7 @@ src, _ := proxy.SourceFromURI("file:///etc/micro/gateway/rules.yaml")
 gw, err := proxy.New(
 	proxy.Registry(nacos.NewRegistry(registry.Addrs("127.0.0.1:8848"))),
 	proxy.RulesFrom(src), // any go-micro config/source.Source works
+	proxy.Broker(nats.NewNatsBroker(broker.Addrs("127.0.0.1:4222"))), // optional: WebSocket push
 )
 if err != nil {
 	log.Fatal(err)
@@ -82,7 +129,7 @@ if err != nil {
 l, _ := net.Listen("tcp", ":8080")
 go gw.Serve(l) // gRPC entry
 hl, _ := net.Listen("tcp", ":8090")
-gw.ServeAPI(hl) // optional HTTP/JSON entry
+gw.ServeAPI(hl) // optional HTTP/JSON entry (and /ws)
 ```
 
 ## Design
@@ -105,6 +152,6 @@ It does not use go-micro's server `Router` and client. Those would decode upstre
 
 - **Inbound TLS** (SPEC §2 SHOULD) is not implemented yet. Terminate TLS in front of the gateway.
 - **The gateway does not open its own span.** It continues or starts the W3C trace, so service spans are children of the client's span, not of a gateway span.
-- **`timeout.read` is idle time between upstream frames.** It therefore also limits how long a client-streaming upload may run before the service replies.
+- **`timeout.read` is idle time between upstream frames.** It therefore also limits how long a client-streaming upload may run before the service replies. It applies to WebSocket streams too, so give long-lived streams a route with a longer `timeout.read`.
 - **Rate-limit buckets restart from full on every rules reload**, and they are local to each gateway instance (SPEC §13).
 - **A data race inside nacos-sdk-go v2.3.5** (`RpcClient.reconnect` vs `notifyConnectionEvent`) shows up under `-race` when Nacos goes away. It is in the SDK, not the gateway.

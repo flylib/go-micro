@@ -51,6 +51,14 @@ type Rules struct {
 	Global    Global         `json:"global"`
 	Routes    []RouteSpec    `json:"routes"`
 	HTTPRules []HTTPRuleSpec `json:"http_rules"`
+	WebSocket *WebSocketSpec `json:"websocket"`
+}
+
+// WebSocketSpec configures the WebSocket entry (SPEC 2.3, 9.7).
+type WebSocketSpec struct {
+	Plugins  []PluginSpec `json:"plugins"`
+	Topics   []string     `json:"topics"`
+	MaxCalls int          `json:"max_calls"`
 }
 
 type Defaults struct {
@@ -131,6 +139,7 @@ type ruleSet struct {
 	global     []plugin
 	httpRules  []*httpRule     // most specific first (SPEC 2.2)
 	forwarded  map[string]bool // metadata keys set by jwt-auth forward_claims
+	ws         *wsRules        // nil: no WebSocket entry
 }
 
 type prefixRoute struct {
@@ -231,6 +240,11 @@ func compile(r Rules, registryName string) (*ruleSet, error) {
 	if rs.httpRules, err = compileHTTPRules(r.HTTPRules); err != nil {
 		return nil, err
 	}
+	if r.WebSocket != nil {
+		if rs.ws, err = compileWS(*r.WebSocket); err != nil {
+			return nil, fmt.Errorf("websocket: %w", err)
+		}
+	}
 
 	// keys any jwt-auth forwards are stripped from every inbound call,
 	// whatever its route, so clients cannot set them (SPEC 9.5)
@@ -238,6 +252,9 @@ func compile(r Rules, registryName string) (*ruleSet, error) {
 	all := append([]plugin{}, rs.global...)
 	for _, rt := range rs.routeList() {
 		all = append(all, rt.plugins...)
+	}
+	if rs.ws != nil {
+		all = append(all, rs.ws.plugins...)
 	}
 	for _, pl := range all {
 		if ja, ok := pl.(*jwtAuth); ok {

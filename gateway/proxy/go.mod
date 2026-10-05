@@ -3,7 +3,9 @@ module github.com/flylib/go-micro/gateway/proxy
 go 1.26.0
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/flylib/go-micro v0.0.0-20261005032823-771d2b07a7e2
+	github.com/flylib/go-micro/broker/nats v0.0.0-20261005032823-771d2b07a7e2
 	github.com/flylib/go-micro/config/source/consul v0.0.0-20261005032823-771d2b07a7e2
 	github.com/flylib/go-micro/config/source/etcd v0.0.0-20261005032823-771d2b07a7e2
 	github.com/flylib/go-micro/config/source/nacos v0.0.0-20261005032823-771d2b07a7e2
@@ -78,6 +80,9 @@ require (
 	github.com/molecule-man/go-brrr v1.0.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nacos-group/nacos-sdk-go/v2 v2.3.5 // indirect
+	github.com/nats-io/nats.go v1.42.0 // indirect
+	github.com/nats-io/nkeys v0.4.11 // indirect
+	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
@@ -121,3 +126,5 @@ replace github.com/flylib/go-micro/registry/consul => ../../registry/consul
 replace github.com/flylib/go-micro/registry/etcd => ../../registry/etcd
 
 replace github.com/flylib/go-micro/registry/nacos => ../../registry/nacos
+
+replace github.com/flylib/go-micro/broker/nats => ../../broker/nats

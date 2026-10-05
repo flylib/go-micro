@@ -24,6 +24,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/flylib/go-micro/broker"
 	"io"
 	"net"
 	"net/http"
@@ -54,6 +55,7 @@ type Options struct {
 	TrustedProxies []netip.Prefix
 	UpstreamTLS    *tls.Config // nil: plaintext h2c to nodes
 	Logger         logger.Logger
+	Broker         broker.Broker // nil: no WebSocket push or topics (SPEC 2.3)
 }
 
 type Option func(*Options)
@@ -75,6 +77,10 @@ func UpstreamTLS(c *tls.Config) Option { return func(o *Options) { o.UpstreamTLS
 // WithLogger sets the logger for access and reload logs.
 func WithLogger(l logger.Logger) Option { return func(o *Options) { o.Logger = l } }
 
+// Broker carries WebSocket pushes and topic messages (SPEC 2.3). It must be
+// the broker services publish on with gateway/push; the gateway connects it.
+func Broker(b broker.Broker) Option { return func(o *Options) { o.Broker = b } }
+
 // Gateway is a running gateway.
 type Gateway struct {
 	opts         Options
@@ -88,6 +94,10 @@ type Gateway struct {
 	httpMu   sync.Mutex
 	httpSrvs []*http.Server     // HTTP/JSON entries started by ServeAPI
 	fastSrvs []*fasthttp.Server // and by ServeAPIFast
+
+	hub     *hub // nil without a broker
+	wsMu    sync.Mutex
+	wsConns map[*wsConn]bool
 
 	stop     chan struct{}
 	stopOnce sync.Once
@@ -137,6 +147,13 @@ func New(opts ...Option) (*Gateway, error) {
 		go g.watchRules()
 	}
 
+	if o.Broker != nil {
+		if err := o.Broker.Connect(); err != nil {
+			return nil, fmt.Errorf("gateway: connect broker %s: %w", o.Broker, err)
+		}
+		g.hub = newHub(o.Broker, o.Logger)
+	}
+
 	g.srv = grpc.NewServer(
 		grpc.UnknownServiceHandler(g.handle),
 		grpc.ForceServerCodec(rawCodec{name: "proto"}),
@@ -153,6 +170,8 @@ func (g *Gateway) Serve(l net.Listener) error { return g.srv.Serve(l) }
 func (g *Gateway) Stop() {
 	g.stopOnce.Do(func() {
 		close(g.stop)
+		// Shutdown does not track hijacked connections: close them first
+		g.closeWS()
 		g.httpMu.Lock()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		for _, srv := range g.httpSrvs {
