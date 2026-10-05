@@ -49,6 +49,28 @@ The call is proxied by `grpc_pass` in the HTTP request itself, so it gets the sa
 
 **One consequence.** The HTTP status is fixed when the headers pass. A reply that sends a message and then a non-OK status keeps 200, with an error in the body. go-micro unary handlers either reply or fail trailers-only, never both.
 
+### REST transcoding
+
+`http_rules` in the rules document map REST endpoints onto gRPC methods ([SPEC.md §2.2](../SPEC.md#22-http-rules-googleapihttp-transcoding)). They use the `google.api.http` model:
+
+```yaml
+http_rules:
+  - {method: GET, path: "/v1/users/{id}", target: /users.Users/Get, params: {id: string, verbose: bool}}
+  - {method: PATCH, path: "/v1/users/{id}", target: /users.Users/Update, body: user}
+```
+
+```bash
+curl 'localhost:8090/v1/users/42?verbose=true'   # -> /users.Users/Get {"id":"42","verbose":true}
+```
+
+- **Matching.** Rules are matched before `/api/...`. The most specific template wins: more literal segments first, then fewer `**`. Path variables, the body (`*` or one field) and query parameters build the request message.
+- **Calls.** The call then follows the target method's routes and plugins.
+- **Responses.** `response_body` returns one field of the reply.
+- **Errors.** A request the rule cannot build, such as a bad `bool` or an unexpected body, gets 400. Other errors come back as go-micro JSON errors with their HTTP status.
+- **Generating rules.** [protoc-gen-micro-gateway](../../cmd/protoc-gen-micro-gateway) generates the rules from `google.api.http` annotations.
+- **Caller identity.** Pair the rules with `jwt-auth` `forward_claims: {user-id: sub}` to give services the caller's id in metadata (§9.5). Clients cannot set those keys themselves.
+- **Implementation.** [httprules.lua](lib/resty/micro/httprules.lua) mirrors the Go gateway. Numbers with more than 15 significant digits are quoted before cjson decodes the body, so int64 ids stay exact. `response_body` is cut out of the reply text without decoding it.
+
 ## Layout
 
 ```
@@ -61,6 +83,7 @@ lib/resty/micro/
   plugins.lua    ip-restriction, jwt-auth (RS256, auth/jwt tokens), rate-limit
   headers.lua    reserved headers, x-forwarded-for, traceparent, client IP
   http.lua       HTTP/JSON entry: access, header and body filters
+  httprules.lua  REST transcoding: templates, matching, request and reply
   errors.lua     go-micro shaped gateway errors as gRPC statuses
   source.lua     rules sources
   ip.lua         CIDR matching

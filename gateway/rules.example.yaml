@@ -37,6 +37,7 @@ routes:
         config:
           public_key: LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KUkVQTEFDRS1XSVRILVJFQUwtS0VZCi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo=
           scopes: ["orders"]
+          forward_claims: { user-id: sub }   # services read metadata "user-id"
       - name: rate-limit
         config: { rate: 50, burst: 20, key: account }
 
@@ -47,3 +48,17 @@ routes:
       service: legacy-billing
       filters:
         labels: { zone: cn-east }
+
+# REST endpoints transcoded to gRPC methods (SPEC.md section 2.2), on the
+# HTTP/JSON entry. Generate these from google.api.http annotations with
+# cmd/protoc-gen-micro-gateway. Routes and plugins above still apply, by
+# the target method.
+http_rules:
+  - method: GET
+    path: /v1/orders/{id}
+    target: /orders.Orders/Get
+    params: { id: string, with_items: bool }
+  - method: POST
+    path: /v1/orders
+    target: /orders.Orders/Create
+    body: "*"

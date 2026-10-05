@@ -46,6 +46,28 @@ curl -X POST localhost:8090/api/greeter/Greeter/Hello -d '{"name":"gopher"}'
 - **Embedding.** `gw.HTTPHandler()` returns the entry as an `http.Handler`, so it can be mounted in an existing server.
 - **fasthttp.** `MICRO_GATEWAY_HTTP_SERVER=fasthttp` (`gw.ServeAPIFast`) serves the same entry on fasthttp, HTTP/1.1 only. In our benchmarks it was not faster than net/http: the gateway's cost is in the gRPC upstream call, access logging and scheduling, not in HTTP parsing. So net/http stays the default.
 
+### REST transcoding
+
+`http_rules` in the rules document map REST endpoints onto gRPC methods ([SPEC.md §2.2](../SPEC.md#22-http-rules-googleapihttp-transcoding)). They use the `google.api.http` model:
+
+```yaml
+http_rules:
+  - {method: GET, path: "/v1/users/{id}", target: /users.Users/Get, params: {id: string, verbose: bool}}
+  - {method: PATCH, path: "/v1/users/{id}", target: /users.Users/Update, body: user}
+```
+
+```bash
+curl 'localhost:8090/v1/users/42?verbose=true'   # -> /users.Users/Get {"id":"42","verbose":true}
+```
+
+- **Matching.** Rules are matched before `/api/...`. The most specific template wins: more literal segments first, then fewer `**`. Path variables, the body (`*` or one field) and query parameters build the request message.
+- **Calls.** The call then follows the target method's routes and plugins.
+- **Responses.** `response_body` returns one field of the reply.
+- **Errors.** A request the rule cannot build, such as a bad `bool` or an unexpected body, gets 400. Other errors come back as go-micro JSON errors with their HTTP status.
+- **Generating rules.** [protoc-gen-micro-gateway](../../cmd/protoc-gen-micro-gateway) generates the rules from `google.api.http` annotations.
+- **Caller identity.** Pair the rules with `jwt-auth` `forward_claims: {user-id: sub}` to give services the caller's id in metadata (§9.5). Clients cannot set those keys themselves.
+- **Implementation.** [httprules.go](httprules.go) does the template parsing, matching and request building, shared by the net/http and fasthttp entries. Numbers in the body are kept exact (`json.Number`).
+
 ## As a library
 
 ```go

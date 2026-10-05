@@ -11,4 +11,6 @@ Edge gateways that take gRPC calls from outside the cluster and route them to go
 | [conformance/](conformance) | Black-box suite that every gateway must pass |
 | [api/](api) | HTTP server shell used by `micro run` and `micro server` for the dashboard. It is not an edge gateway. |
 
+**HTTP clients.** Both gateways can also serve an HTTP/JSON entry. It accepts `POST /api/<service>/<Handler>/<Method>` and REST endpoints transcoded from `google.api.http` annotations (SPEC §2.1, §2.2). [protoc-gen-micro-gateway](../cmd/protoc-gen-micro-gateway) generates the rules from your protos.
+
 **Service-side requirements.** Services must use the gRPC server (`server/grpc`) and register in etcd, Consul or Nacos. **Routing convention:** a service's proto `package` equals its registry name, so `/<service>.<Handler>/<Method>` needs no route.
