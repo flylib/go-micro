@@ -78,6 +78,13 @@ func (w fileWriter) write(_ context.Context, doc []byte) error {
 		os.Remove(tmp.Name())
 		return err
 	}
+	// CreateTemp makes the file 0600; a gateway running as another user
+	// must be able to read the rules
+	if err := tmp.Chmod(0o644); err != nil {
+		tmp.Close()
+		os.Remove(tmp.Name())
+		return err
+	}
 	if err := tmp.Close(); err != nil {
 		os.Remove(tmp.Name())
 		return err

@@ -33,6 +33,15 @@ go test -count=1 -v .
 
 The variable names match the gateway bootstrap settings ([SPEC.md §11](../SPEC.md#11-bootstrap)), so a single env file can configure both the gateway and the suite.
 
+**Gateway in a container on a macOS Docker VM (colima, Docker Desktop).** Run the suite in a container too, on the gateway's network:
+
+```bash
+CGO_ENABLED=0 GOOS=linux go test -c -o conf-linux .
+docker run --rm --network <gateway-net> -v "$PWD:/e2e" -e GATEWAY_ADDR=<gateway>:8080 ... alpine /e2e/conf-linux -test.v
+```
+
+Container-to-host connections through the VM drop intermittently. With the suite on the host, backends are reached through the VM, and those drops show up as false failures. D4 needs `docker` and is skipped in this mode.
+
 **Use a disposable rules source.** Each case replaces the whole rules document. Every service the suite starts is named with a random per-run prefix, so runs do not collide in the registry.
 
 ## How a case knows its rules are live
