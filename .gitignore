@@ -62,3 +62,9 @@ examples/mcp/hello/hello
 /micro-mcp-gateway
 
 .codegraph
+
+# Example binaries (go build in an example directory)
+/examples/*/example
+/examples/hello-world/hello-world
+/examples/graceful-stop/graceful-stop
+/examples/web-service/web-service
