@@ -395,6 +395,9 @@ func registerHandlers(mux *http.ServeMux, tmpls *templates, storeInst store.Stor
 		return false
 	}
 
+	caller := defaultCaller()
+	registerHealth(mux, registry.DefaultRegistry)
+
 	// Serve static files with correct Content-Type
 	mux.HandleFunc("/styles.css", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
@@ -422,6 +425,11 @@ func registerHandlers(mux *http.ServeMux, tmpls *templates, storeInst store.Stor
 		path := r.URL.Path
 		if strings.HasPrefix(path, "/auth/") {
 			// Let the dedicated /auth/* handlers process this
+			return
+		}
+		// POST /api/{service}/{endpoint}: call the service (api.go)
+		if strings.HasPrefix(path, apiPrefix) && path != apiPrefix {
+			caller.serveAPI(w, r, checkEndpointScopes)
 			return
 		}
 		userID := getUser(r)
@@ -785,10 +793,15 @@ You can generate tokens on the <a href='/auth/tokens'>Tokens page</a>.
 							}
 						}
 					}
-					// For now, just echo the request body as JSON
+					// call the endpoint with the form as the JSON request
+					b, _ := json.Marshal(reqBody)
+					reply, err := caller.call(r.Context(), service, endpoint, b, r.Header)
+					if err != nil {
+						writeAPIError(w, err)
+						return
+					}
 					w.Header().Set("Content-Type", "application/json")
-					b, _ := json.MarshalIndent(reqBody, "", "  ")
-					w.Write(b)
+					w.Write(reply)
 					return
 				}
 			}
