@@ -116,6 +116,19 @@ db := postgres.New("postgres://user:pass@localhost/mydb?sslmode=disable")
 
 Full PostgreSQL support. Best for production with rich query capabilities.
 
+### MongoDB
+
+```go
+import "github.com/flylib/go-micro/model/mongo"
+
+db := mongo.New("mongodb://user:pass@localhost:27017/mydb") // database from the path, else "micro"
+// or mongo.NewFromClient(client, "mydb") to share a *mongo.Client
+```
+
+- **Storage.** Each table is a collection. The key is stored as `_id`, and the other fields keep their BSON types (numbers, booleans, times, slices). `model:"index"` creates an ascending index.
+- **Filters.** Filters become MongoDB operators. `LIKE` becomes an anchored regular expression: `%` matches any run of characters, `_` any one character.
+- **Typed comparisons.** As in SQL, a number field does not equal the string `"30"`.
+
 ## Table Names
 
 By default, the table name is the lowercase struct name + "s" (e.g., `User` → `users`). Override with `model.WithTable`:
@@ -153,7 +166,7 @@ type Model interface {
 | Pagination | Limit/Offset on keys | Limit/Offset on results |
 | Indexes | None | Via `model:"index"` tag |
 | Schema | None (schemaless KV) | Auto-created from struct |
-| Backends | Memory, File, MySQL, Postgres, NATS | Memory, SQLite, Postgres |
+| Backends | Memory, File, MySQL, Postgres, NATS, Redis, MongoDB | Memory, SQLite, Postgres, MongoDB |
 | Use case | Config, sessions, cache | Application data, entities |
 
 ## Testing
