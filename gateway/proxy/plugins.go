@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -27,9 +28,10 @@ type call struct {
 	method   string
 	md       metadata.MD // inbound
 	clientIP string
-	account  string // set by jwt-auth
-	trace    string // effective traceparent, for the access log
-	entry    string // "grpc" or "http"
+	account  string            // set by jwt-auth
+	forward  map[string]string // metadata set by jwt-auth forward_claims
+	trace    string            // effective traceparent, for the access log
+	entry    string            // "grpc" or "http"
 }
 
 // plugin checks a call; a non-nil error is a gateway error that ends it.
@@ -138,15 +140,17 @@ func (p *ipRestriction) check(c *call) error {
 const jwtLeeway = 30 * time.Second
 
 type jwtAuth struct {
-	key    *rsa.PublicKey
-	scopes []string
-	now    func() time.Time
+	key     *rsa.PublicKey
+	scopes  []string
+	forward map[string]string // metadata key -> claim
+	now     func() time.Time
 }
 
 func newJWTAuth(raw json.RawMessage) (plugin, error) {
 	var cfg struct {
-		PublicKey string   `json:"public_key"`
-		Scopes    []string `json:"scopes"`
+		PublicKey     string            `json:"public_key"`
+		Scopes        []string          `json:"scopes"`
+		ForwardClaims map[string]string `json:"forward_claims"`
 	}
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return nil, err
@@ -164,7 +168,7 @@ func newJWTAuth(raw json.RawMessage) (plugin, error) {
 	if err != nil {
 		return nil, fmt.Errorf("public_key: %w", err)
 	}
-	return &jwtAuth{key: key, scopes: cfg.Scopes, now: time.Now}, nil
+	return &jwtAuth{key: key, scopes: cfg.Scopes, forward: cfg.ForwardClaims, now: time.Now}, nil
 }
 
 func parseRSAPublicKey(der []byte) (*rsa.PublicKey, error) {
@@ -182,6 +186,7 @@ type jwtClaims struct {
 	Exp    *int64   `json:"exp"`
 	Nbf    *int64   `json:"nbf"`
 	Scopes []string `json:"scopes"`
+	raw    map[string]any
 }
 
 func (p *jwtAuth) check(c *call) error {
@@ -198,7 +203,22 @@ func (p *jwtAuth) check(c *call) error {
 		return errForbidden("token lacks a required scope")
 	}
 	c.account = claims.Sub
+	for key, name := range p.forward {
+		switch v := claims.raw[name].(type) {
+		case string:
+			setForward(c, key, v)
+		case float64:
+			setForward(c, key, strconv.FormatFloat(v, 'f', -1, 64))
+		}
+	}
 	return nil
+}
+
+func setForward(c *call, key, v string) {
+	if c.forward == nil {
+		c.forward = map[string]string{}
+	}
+	c.forward[key] = v
 }
 
 func (p *jwtAuth) verify(tok string) (*jwtClaims, error) {
@@ -227,6 +247,9 @@ func (p *jwtAuth) verify(tok string) (*jwtClaims, error) {
 	}
 	var cl jwtClaims
 	if err := decodeSegment(parts[1], &cl); err != nil {
+		return nil, err
+	}
+	if err := decodeSegment(parts[1], &cl.raw); err != nil {
 		return nil, err
 	}
 	now := p.now()

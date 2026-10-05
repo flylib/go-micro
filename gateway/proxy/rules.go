@@ -46,10 +46,11 @@ const (
 
 // Rules mirrors gateway/rules.schema.json (SPEC 9).
 type Rules struct {
-	Version  int         `json:"version"`
-	Defaults Defaults    `json:"defaults"`
-	Global   Global      `json:"global"`
-	Routes   []RouteSpec `json:"routes"`
+	Version   int            `json:"version"`
+	Defaults  Defaults       `json:"defaults"`
+	Global    Global         `json:"global"`
+	Routes    []RouteSpec    `json:"routes"`
+	HTTPRules []HTTPRuleSpec `json:"http_rules"`
 }
 
 type Defaults struct {
@@ -128,6 +129,8 @@ type ruleSet struct {
 	services   map[string]*route
 	convention *route // nil when defaults.convention is false
 	global     []plugin
+	httpRules  []*httpRule     // most specific first (SPEC 2.2)
+	forwarded  map[string]bool // metadata keys set by jwt-auth forward_claims
 }
 
 type prefixRoute struct {
@@ -225,7 +228,40 @@ func compile(r Rules, registryName string) (*ruleSet, error) {
 	sort.SliceStable(rs.prefixes, func(i, j int) bool {
 		return len(rs.prefixes[i].prefix) > len(rs.prefixes[j].prefix)
 	})
+	if rs.httpRules, err = compileHTTPRules(r.HTTPRules); err != nil {
+		return nil, err
+	}
+
+	// keys any jwt-auth forwards are stripped from every inbound call,
+	// whatever its route, so clients cannot set them (SPEC 9.5)
+	rs.forwarded = map[string]bool{}
+	all := append([]plugin{}, rs.global...)
+	for _, rt := range rs.routeList() {
+		all = append(all, rt.plugins...)
+	}
+	for _, pl := range all {
+		if ja, ok := pl.(*jwtAuth); ok {
+			for k := range ja.forward {
+				rs.forwarded[k] = true
+			}
+		}
+	}
 	return rs, nil
+}
+
+// routeList returns every compiled route once.
+func (rs *ruleSet) routeList() []*route {
+	var out []*route
+	for _, rt := range rs.methods {
+		out = append(out, rt)
+	}
+	for _, p := range rs.prefixes {
+		out = append(out, p.route)
+	}
+	for _, rt := range rs.services {
+		out = append(out, rt)
+	}
+	return out
 }
 
 func defaultsRoute(d Defaults) (*route, error) {

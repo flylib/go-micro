@@ -8,6 +8,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -49,6 +50,14 @@ var httpOnlyHeaders = map[string]bool{
 // in an existing server. ServeAPI serves it with h2c as well.
 func (g *Gateway) HTTPHandler() http.Handler {
 	r := chi.NewRouter()
+	// HTTP rules are matched before the /api routes (SPEC 2.2)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if !g.serveRule(w, req) {
+				next.ServeHTTP(w, req)
+			}
+		})
+	})
 	r.Post("/api/{service}/{handler}/{method}", g.serveJSON)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		writeHTTPError(w, errHTTPNotFound(r.URL.Path), "")
@@ -125,6 +134,74 @@ func (g *Gateway) serveJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(reply.data)
+}
+
+// serveRule serves a request matching an HTTP rule and reports whether
+// one matched.
+func (g *Gateway) serveRule(w http.ResponseWriter, r *http.Request) bool {
+	hr, vars := g.rules.Load().matchHTTP(r.Method, r.URL.EscapedPath())
+	if hr == nil {
+		return false
+	}
+	start := time.Now()
+	md := httpMetadata(r.Header)
+	c := &call{
+		ctx:      r.Context(),
+		entry:    "http",
+		method:   hr.target,
+		md:       md,
+		clientIP: clientIP(hostOfString(r.RemoteAddr), md, g.opts.TrustedProxies),
+	}
+	var pc *prepared
+	var node string
+	var err error
+	defer func() { g.access(c, pc, node, start, err) }()
+
+	if err = checkContentType(r.Header.Get("Content-Type")); err != nil {
+		writeHTTPError(w, err, "")
+		return true
+	}
+	body, rerr := io.ReadAll(http.MaxBytesReader(w, r.Body, maxHTTPBody))
+	if rerr != nil {
+		err = errHTTPTooLarge()
+		writeHTTPError(w, err, "")
+		return true
+	}
+	var out []byte
+	var hdr metadata.MD
+	pc, out, hdr, err = g.transcode(r.Context(), c, hr, vars, r.URL.Query(), body, &node)
+	if err != nil {
+		writeHTTPError(w, err, serviceOf(pc))
+		return true
+	}
+	for k, vs := range hdr {
+		if replyHeader(k) {
+			for _, v := range vs {
+				w.Header().Add(k, v)
+			}
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(out)
+	return true
+}
+
+// transcode runs an HTTP rule call (SPEC 2.2): build the request message,
+// call the rule's target like an HTTP/JSON entry call, apply response_body.
+func (g *Gateway) transcode(ctx context.Context, c *call, hr *httpRule, vars map[string]string, query url.Values,
+	body []byte, node *string) (*prepared, []byte, metadata.MD, error) {
+
+	msg, err := hr.build(body, vars, query)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	pc, reply, hdr, err := g.callJSON(ctx, c, msg, node)
+	if err != nil {
+		return pc, nil, nil, err
+	}
+	out, err := hr.reply(reply.data)
+	return pc, out, hdr, err
 }
 
 // callJSON runs one HTTP/JSON call once the entry has checked and read the

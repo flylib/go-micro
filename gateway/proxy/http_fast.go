@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/url"
 	"strings"
 	"time"
 
@@ -47,6 +48,31 @@ func (g *Gateway) serveFast(ctx *fasthttp.RequestCtx) {
 	var err error
 	defer func() { g.access(c, pc, node, start, err) }()
 
+	// HTTP rules first (SPEC 2.2), on the raw path
+	raw, _, _ := strings.Cut(string(ctx.Request.URI().PathOriginal()), "?")
+	if hr, vars := g.rules.Load().matchHTTP(string(ctx.Method()), raw); hr != nil {
+		c.method = hr.target
+		if err = checkContentType(string(ctx.Request.Header.ContentType())); err != nil {
+			writeFastError(ctx, err, "")
+			return
+		}
+		query, qerr := url.ParseQuery(string(ctx.QueryArgs().QueryString()))
+		if qerr != nil {
+			err = errTranscode("bad query string: " + qerr.Error())
+			writeFastError(ctx, err, "")
+			return
+		}
+		var out []byte
+		var hdr metadata.MD
+		pc, out, hdr, err = g.transcode(c.ctx, c, hr, vars, query, ctx.PostBody(), &node)
+		if err != nil {
+			writeFastError(ctx, err, serviceOf(pc))
+			return
+		}
+		writeFastReply(ctx, hdr, out)
+		return
+	}
+
 	// route: /api/<service>/<Handler>/<Method>, POST only (as with chi:
 	// 404 when the path does not match, 405 when only the method is wrong)
 	path := string(ctx.Path())
@@ -77,6 +103,10 @@ func (g *Gateway) serveFast(ctx *fasthttp.RequestCtx) {
 		writeFastError(ctx, err, serviceOf(pc))
 		return
 	}
+	writeFastReply(ctx, hdr, reply.data)
+}
+
+func writeFastReply(ctx *fasthttp.RequestCtx, hdr metadata.MD, body []byte) {
 	for k, vs := range hdr {
 		if replyHeader(k) {
 			for _, v := range vs {
@@ -86,7 +116,7 @@ func (g *Gateway) serveFast(ctx *fasthttp.RequestCtx) {
 	}
 	ctx.SetContentType("application/json")
 	ctx.SetStatusCode(fasthttp.StatusOK)
-	ctx.SetBody(reply.data)
+	ctx.SetBody(body)
 }
 
 // splitAPIPath splits /api/<service>/<Handler>/<Method>, every part set.

@@ -336,6 +336,12 @@ func (g *Gateway) prepare(c *call) (*prepared, error) {
 	}
 
 	pc.out = outgoingMetadata(c.md, c.clientIP)
+	for k := range rs.forwarded {
+		pc.out.Delete(k)
+	}
+	for k, v := range c.forward {
+		pc.out.Set(k, v)
+	}
 	if rt.name != "" {
 		pc.out.Set(hdrRoute, rt.name)
 	}
