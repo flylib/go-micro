@@ -5,7 +5,7 @@ A Go microservices toolkit
 ## Overview
 
 Micro is a toolkit for Go microservices development. It provides the foundation for building services in the cloud. 
-The core of Micro is the [Go Micro](https://github.com/micro/go-micro) framework, which developers import and use in their code to 
+The core of Micro is the [Go Micro](../../..) framework, which developers import and use in their code to 
 write services. Surrounding this we introduce a number of tools to make it easy to serve and consume services. 
 
 ## Install the CLI
@@ -13,18 +13,10 @@ write services. Surrounding this we introduce a number of tools to make it easy 
 Install `micro` via `go install`
 
 ```
-go install go-micro.dev/v5/cmd/micro@v5.16.0
+go install github.com/flylib/go-micro/cmd/micro@main
 ```
 
-> **Note:** Use a specific version instead of `@latest` to avoid module path conflicts. See [releases](https://github.com/micro/go-micro/releases) for the latest version.
-
-Or via install script
-
-```
-wget -q  https://raw.githubusercontent.com/micro/micro/master/scripts/install.sh -O - | /bin/bash
-```
-
-For releases see the [latest](https://go-micro.dev/releases/latest) tag
+The repository has no release tags: `@main` resolves to the latest commit (a pseudo-version), and every in-repo module pins the others the same way.
 
 ## Create a service
 
@@ -148,7 +140,7 @@ import (
         "context"
         "fmt"
 
-        "go-micro.dev/v5"
+        "github.com/flylib/go-micro"
 )
 
 type Request struct {
@@ -178,7 +170,7 @@ func main() {
 
 ## Protobuf 
 
-Use protobuf for code generation with [protoc-gen-micro](https://go-micro.dev/tree/master/cmd/protoc-gen-micro)
+Use protobuf for code generation with [protoc-gen-micro](../../protoc-gen-micro)
 
 ## Server
 

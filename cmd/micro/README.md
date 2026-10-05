@@ -7,7 +7,7 @@ Go Micro Command Line
 Install `micro` via `go install`
 
 ```
-go install go-micro.dev/v5/cmd/micro@v5.16.0
+go install github.com/flylib/go-micro/cmd/micro@main
 ```
 
 
@@ -255,7 +255,7 @@ import (
         "context"
         "fmt"
 
-        "go-micro.dev/v5"
+        "github.com/flylib/go-micro"
 )
 
 type Request struct {
@@ -303,7 +303,7 @@ Deploy to any Linux server with systemd:
 ```bash
 # First time: set up the server
 ssh user@server
-curl -fsSL https://go-micro.dev/install.sh | sh
+go install github.com/flylib/go-micro/cmd/micro@main && sudo install ~/go/bin/micro /usr/local/bin/
 sudo micro init --server
 exit
 
@@ -348,8 +348,6 @@ micro logs myservice --remote user@server -f
 # Stop a service
 micro stop myservice --remote user@server
 ```
-
-See [internal/website/docs/deployment.md](../../internal/website/docs/deployment.md) for the full deployment guide.
 
 ## API Gateway
 
@@ -407,50 +405,9 @@ micro config dump                # print all configuration
 
 Keys use dot notation: `database.host` reads from `DATABASE_HOST`.
 
-## AI & Agents
-
-### micro chat
-
-Interactive LLM agent that discovers services and orchestrates them through natural language:
-
-```bash
-ANTHROPIC_API_KEY=sk-ant-... micro chat --provider anthropic
-> list all users
-> send a welcome email to Alice
-```
-
-Supports: `--provider` (anthropic, openai, gemini, atlascloud, groq, mistral, together), `--prompt` for single-shot mode, `--model` and `--base_url` for overrides.
-
-Environment variables: `MICRO_AI_PROVIDER`, `MICRO_AI_API_KEY`, or provider-specific keys like `ANTHROPIC_API_KEY`.
-
-### micro flow
-
-Event-driven LLM orchestration:
-
-```bash
-# Subscribe to events and react
-micro flow run --trigger events.user.created \
-  --prompt "New user: {{.Data}}. Send welcome email." \
-  --provider anthropic
-
-# One-shot execution
-micro flow exec --prompt "List all users" --provider anthropic
-```
-
-### micro mcp
-
-Expose services as MCP tools for AI agents:
-
-```bash
-micro mcp serve              # stdio transport (for Claude Code)
-micro mcp serve --address :3000  # HTTP/SSE transport
-micro mcp list               # list available tools
-micro mcp test <tool>        # test a tool
-```
-
 ## Protobuf 
 
-Use protobuf for code generation with [protoc-gen-micro](https://github.com/micro/go-micro/tree/master/cmd/protoc-gen-micro)
+Use protobuf for code generation with [protoc-gen-micro](../protoc-gen-micro)
 
 ## Server
 
@@ -576,7 +533,7 @@ micro server  # Auth enabled, JWT tokens required
 You can also start the gateway programmatically in your own Go code:
 
 ```go
-import "go-micro.dev/v5/cmd/micro/server"
+import "github.com/flylib/go-micro/cmd/micro/server"
 
 // Start gateway with auth (recommended)
 gw, err := server.StartGateway(server.GatewayOptions{
@@ -590,8 +547,6 @@ gw, err := server.StartGateway(server.GatewayOptions{
     AuthEnabled: false,
 })
 ```
-
-See [`internal/website/docs/architecture/adr-010-unified-gateway.md`](../../internal/website/docs/architecture/adr-010-unified-gateway.md) for architecture details.
 
 ### Scopes
 
