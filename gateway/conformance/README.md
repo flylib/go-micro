@@ -27,6 +27,8 @@ go test -count=1 -v .
 | `GATEWAY_ADDR` | Gateway address. When unset, the gateway cases are skipped. |
 | `GATEWAY_HTTP_ADDR` | Gateway HTTP/JSON entry address (SPEC §2.1). When unset, the J cases are skipped. |
 | `GATEWAY_HTTP_H2C` | `false` for an HTTP/1.1-only entry: the J cases then skip their h2c runs. |
+| `GATEWAY_WS_URL` | WebSocket entry, e.g. `ws://localhost:8090/ws` (SPEC §2.3). When unset, the W cases are skipped. |
+| `MICRO_BROKER`, `MICRO_BROKER_ADDRESS` | The broker the gateway uses for push (`nats`). When unset, W5 and W6 are skipped. |
 | `MICRO_REGISTRY`, `MICRO_REGISTRY_ADDRESS` | Registry the gateway reads. Backends register here. |
 | `MICRO_REGISTRY_NAMESPACE`, `MICRO_REGISTRY_GROUP` | Nacos namespace and group, if not the defaults. |
 | `MICRO_GATEWAY_RULES` | Rules source URI the gateway was started with: `file://`, `etcd://`, `consul://` or `nacos://`. The suite overwrites it. |

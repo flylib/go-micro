@@ -3,8 +3,10 @@ module github.com/flylib/go-micro/gateway/conformance
 go 1.26.0
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/flylib/go-micro v0.0.0-20261005032823-771d2b07a7e2
 	github.com/flylib/go-micro/auth/jwt v0.0.0-20261005032823-771d2b07a7e2
+	github.com/flylib/go-micro/broker/nats v0.0.0-20261005032823-771d2b07a7e2
 	github.com/flylib/go-micro/registry/consul v0.0.0-20261005032823-771d2b07a7e2
 	github.com/flylib/go-micro/registry/etcd v0.0.0-20261005032823-771d2b07a7e2
 	github.com/flylib/go-micro/registry/nacos v0.0.0-20261005032823-771d2b07a7e2
@@ -68,6 +70,7 @@ require (
 	github.com/hashicorp/serf v0.10.1 // indirect
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/miekg/dns v1.1.50 // indirect
@@ -77,6 +80,9 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/nats-io/nats.go v1.42.0 // indirect
+	github.com/nats-io/nkeys v0.4.11 // indirect
+	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
@@ -122,3 +128,5 @@ replace github.com/flylib/go-micro/registry/nacos => ../../registry/nacos
 replace github.com/flylib/go-micro/server/grpc => ../../server/grpc
 
 replace github.com/flylib/go-micro/client/grpc => ../../client/grpc
+
+replace github.com/flylib/go-micro/broker/nats => ../../broker/nats

@@ -9,6 +9,9 @@
 //
 //	GATEWAY_ADDR                  gateway listen address, e.g. localhost:8080 (unset: gateway cases skip)
 //	GATEWAY_HTTP_ADDR             gateway HTTP/JSON entry address (unset: J cases skip)
+//	GATEWAY_WS_URL                gateway WebSocket entry, e.g. ws://localhost:8090/ws (unset: W cases skip)
+//	MICRO_BROKER                  broker the gateway uses for push: nats (unset: W5, W6 skip)
+//	MICRO_BROKER_ADDRESS          comma-separated broker addresses
 //	MICRO_REGISTRY                etcd | consul | nacos
 //	MICRO_REGISTRY_ADDRESS        comma-separated host:port
 //	MICRO_REGISTRY_NAMESPACE      nacos namespace (optional)
@@ -42,6 +45,9 @@ const (
 type config struct {
 	gateway       string
 	httpGateway   string
+	wsURL         string
+	broker        string
+	brokerAddrs   []string
 	registry      string
 	registryAddrs []string
 	namespace     string
@@ -56,6 +62,8 @@ func loadConfig() config {
 	c := config{
 		gateway:       os.Getenv("GATEWAY_ADDR"),
 		httpGateway:   os.Getenv("GATEWAY_HTTP_ADDR"),
+		wsURL:         os.Getenv("GATEWAY_WS_URL"),
+		broker:        os.Getenv("MICRO_BROKER"),
 		registry:      os.Getenv("MICRO_REGISTRY"),
 		namespace:     os.Getenv("MICRO_REGISTRY_NAMESPACE"),
 		group:         os.Getenv("MICRO_REGISTRY_GROUP"),
@@ -66,6 +74,9 @@ func loadConfig() config {
 	}
 	if v := os.Getenv("MICRO_REGISTRY_ADDRESS"); v != "" {
 		c.registryAddrs = strings.Split(v, ",")
+	}
+	if v := os.Getenv("MICRO_BROKER_ADDRESS"); v != "" {
+		c.brokerAddrs = strings.Split(v, ",")
 	}
 	if c.advertiseHost == "" {
 		if h, err := addr.Extract(""); err == nil {
