@@ -71,6 +71,8 @@ function _M.init(opts)
         addrs = split(getenv("MICRO_REGISTRY_ADDRESS")),
         namespace = getenv("MICRO_REGISTRY_NAMESPACE"),
         group = getenv("MICRO_REGISTRY_GROUP"),
+        username = getenv("MICRO_REGISTRY_USERNAME"),
+        password = getenv("MICRO_REGISTRY_PASSWORD"),
     }
     local trusted, err = ip.prefixes(split(getenv("MICRO_GATEWAY_TRUSTED_PROXIES")))
     if not trusted then
@@ -95,6 +97,12 @@ function _M.init(opts)
     conf.source, err = source.parse(uri)
     if not conf.source then
         error(err)
+    end
+    -- rules and services usually live on one Nacos: without credentials in
+    -- the URI, a nacos:// source uses the registry's (as the Go gateway)
+    if conf.source.kind == "nacos" and not conf.source.username then
+        conf.source.username = conf.registry.username
+        conf.source.password = conf.registry.password
     end
     if conf.source.kind == "file" then
         local text

@@ -122,3 +122,15 @@ func TestRejectedRules(t *testing.T) {
 		t.Errorf("endpoint filter with etcd: %v", err)
 	}
 }
+
+func TestRedactURI(t *testing.T) {
+	for in, want := range map[string]string{
+		"nacos://u:secret@h:8848/rules?group=G": "nacos://u:xxxxx@h:8848/rules?group=G",
+		"nacos://h:8848/rules":                  "nacos://h:8848/rules",
+		"file:///etc/rules.yaml":                "file:///etc/rules.yaml",
+	} {
+		if got := RedactURI(in); got != want {
+			t.Errorf("RedactURI(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

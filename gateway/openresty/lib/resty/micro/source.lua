@@ -27,7 +27,16 @@ function _M.parse(uri)
     end
     local host, path = rest:match("^([^/]+)/(.+)$")
     if not host then
-        return nil, "rules source: " .. scheme .. " URI needs host and key: " .. uri
+        return nil, "rules source: " .. scheme .. " URI needs host and key: " .. _M.redact(uri)
+    end
+    -- user:pass@host (nacos with auth on)
+    local username, password
+    local userinfo, h = host:match("^(.*)@([^@]+)$")
+    if userinfo then
+        host = h
+        local u, p = userinfo:match("^([^:]*):(.*)$")
+        username = ngx.unescape_uri(u or userinfo)
+        password = p and ngx.unescape_uri(p)
     end
     if scheme == "etcd" then
         return { kind = "etcd", addrs = { host }, key = "/" .. path }
@@ -37,9 +46,15 @@ function _M.parse(uri)
         return {
             kind = "nacos", addrs = { host }, data_id = path,
             group = params.group or "DEFAULT_GROUP", namespace = params.namespace,
+            username = username, password = password,
         }
     end
     return nil, "rules source: unsupported scheme " .. scheme .. " (want file, etcd, consul or nacos)"
+end
+
+-- redact hides the password of a URI, for logs and errors.
+function _M.redact(uri)
+    return (uri:gsub("^(%a+://[^/:@]*):[^/@]*@", "%1:xxxxx@"))
 end
 
 function _M.read_file(src)
@@ -85,7 +100,7 @@ local function read_nacos(src)
     if src.namespace and src.namespace ~= "" then
         q[#q + 1] = "tenant=" .. ngx.escape_uri(src.namespace)
     end
-    local res, err = registry.request(src.addrs, "/nacos/v1/cs/configs?" .. concat(q, "&"))
+    local res, err = registry.nacos_get(src, "/nacos/v1/cs/configs?" .. concat(q, "&"))
     if not res then
         return nil, err
     end

@@ -43,9 +43,23 @@ func SourceFromURI(uri string) (source.Source, error) {
 		if ns := u.Query().Get("namespace"); ns != "" {
 			opts = append(opts, nacossrc.WithNamespaceId(ns))
 		}
+		// nacos://user:pass@host:8848/... for servers with auth on
+		if u.User != nil {
+			pass, _ := u.User.Password()
+			opts = append(opts, nacossrc.WithAuth(u.User.Username(), pass))
+		}
 		return nacossrc.NewSource(opts...), nil
 	}
 	return nil, fmt.Errorf("rules source: unsupported scheme %q (want file, etcd, consul or nacos)", u.Scheme)
+}
+
+// RedactURI hides the password of a rules source URI, for logs.
+func RedactURI(uri string) string {
+	u, err := url.Parse(uri)
+	if err != nil || u.User == nil {
+		return uri
+	}
+	return u.Redacted()
 }
 
 // filePoll is how often a file source is checked for changes.

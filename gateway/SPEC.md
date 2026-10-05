@@ -446,6 +446,7 @@ Static settings, read once. Names reuse go-micro's existing environment variable
 | `MICRO_REGISTRY` | `etcd`, `consul` or `nacos` |
 | `MICRO_REGISTRY_ADDRESS` | Comma-separated `host:port` list |
 | `MICRO_REGISTRY_NAMESPACE` / `MICRO_REGISTRY_GROUP` | Nacos namespace and group |
+| `MICRO_REGISTRY_USERNAME` / `MICRO_REGISTRY_PASSWORD` | Nacos credentials, for servers with authentication on (the default since Nacos 3.0). Also used for a `nacos://` rules source without credentials of its own. |
 | `MICRO_GATEWAY_RULES` | Rules source URI, see below |
 | `MICRO_GATEWAY_TRUSTED_PROXIES` | Comma-separated CIDRs (§7) |
 | `MICRO_GATEWAY_UPSTREAM_TLS` | `true` to dial nodes with TLS |
@@ -459,6 +460,7 @@ file:///etc/micro/gateway/rules.yaml
 etcd://host:2379/micro/gateway/rules                   # value of one key
 consul://host:8500/micro/gateway/rules                 # one KV key
 nacos://host:8848/micro-gateway-rules?group=DEFAULT_GROUP&namespace=public
+nacos://user:pass@host:8848/micro-gateway-rules         # Nacos with authentication on
 ```
 
 The rules backend is independent of `MICRO_REGISTRY`. For example, rules can live in Nacos while services register in etcd.

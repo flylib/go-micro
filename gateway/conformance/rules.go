@@ -142,6 +142,13 @@ func newNacosWriter(u *url.URL, dataID string) (rulesWriter, error) {
 		NotLoadCacheAtStart: true,
 		LogLevel:            "warn",
 	}
+	// credentials from the URI, else the registry's, as the gateways do
+	if u.User != nil {
+		cc.Username = u.User.Username()
+		cc.Password, _ = u.User.Password()
+	} else if user := os.Getenv("MICRO_REGISTRY_USERNAME"); user != "" {
+		cc.Username, cc.Password = user, os.Getenv("MICRO_REGISTRY_PASSWORD")
+	}
 	cli, err := clients.NewConfigClient(vo.NacosClientParam{
 		ClientConfig:  &cc,
 		ServerConfigs: []constant.ServerConfig{{IpAddr: host, Port: port}},

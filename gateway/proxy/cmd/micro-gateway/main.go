@@ -8,6 +8,8 @@
 //	MICRO_REGISTRY_ADDRESS         comma-separated host:port
 //	MICRO_REGISTRY_NAMESPACE       nacos namespace
 //	MICRO_REGISTRY_GROUP           nacos group
+//	MICRO_REGISTRY_USERNAME        nacos username (servers with auth on)
+//	MICRO_REGISTRY_PASSWORD        nacos password
 //	MICRO_GATEWAY_RULES            rules source URI, or "none"
 //	MICRO_GATEWAY_TRUSTED_PROXIES  comma-separated CIDRs
 //	MICRO_GATEWAY_UPSTREAM_TLS     "true" to dial nodes with TLS
@@ -19,6 +21,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -54,7 +57,7 @@ func run() error {
 		return fmt.Errorf("MICRO_GATEWAY_RULES is required (a rules source URI, or %q)", proxy.RulesNone)
 	case proxy.RulesNone:
 	default:
-		src, err := proxy.SourceFromURI(rules)
+		src, err := proxy.SourceFromURI(withRegistryAuth(rules))
 		if err != nil {
 			return err
 		}
@@ -123,7 +126,7 @@ func run() error {
 		logger.Logf(logger.InfoLevel, "micro-gateway HTTP/JSON entry (%s) listening on %s", kind, hl.Addr())
 		go func() { errc <- serve(hl) }()
 	}
-	logger.Logf(logger.InfoLevel, "micro-gateway listening on %s (registry %s, rules %s)", l.Addr(), reg, rules)
+	logger.Logf(logger.InfoLevel, "micro-gateway listening on %s (registry %s, rules %s)", l.Addr(), reg, proxy.RedactURI(rules))
 	go func() { errc <- gw.Serve(l) }()
 
 	// either entry failing stops the gateway; Stop ends both
@@ -146,10 +149,25 @@ func newRegistry() (registry.Registry, error) {
 		if g := os.Getenv("MICRO_REGISTRY_GROUP"); g != "" {
 			opts = append(opts, nacos.WithGroupName(g))
 		}
+		if u := os.Getenv("MICRO_REGISTRY_USERNAME"); u != "" {
+			opts = append(opts, nacos.WithAuth(u, os.Getenv("MICRO_REGISTRY_PASSWORD")))
+		}
 		return nacos.NewRegistry(opts...), nil
 	default:
 		return nil, fmt.Errorf("MICRO_REGISTRY must be etcd, consul or nacos, got %q", r)
 	}
+}
+
+// withRegistryAuth gives a nacos:// rules URI without credentials the
+// registry's, as rules and services usually live on one Nacos.
+func withRegistryAuth(uri string) string {
+	user := os.Getenv("MICRO_REGISTRY_USERNAME")
+	u, err := url.Parse(uri)
+	if err != nil || u.Scheme != "nacos" || u.User != nil || user == "" {
+		return uri
+	}
+	u.User = url.UserPassword(user, os.Getenv("MICRO_REGISTRY_PASSWORD"))
+	return u.String()
 }
 
 func split(v string) []string {

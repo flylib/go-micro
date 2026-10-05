@@ -177,6 +177,55 @@ function _M.parse_nacos(name, body)
     return group(name, entries)
 end
 
+-- Nacos auth (on by default since Nacos 3.0): log in with the username
+-- and password, keep the token per worker until 90% of its TTL, and log in
+-- again when the server rejects it. /nacos/v1/auth/login is served by
+-- Nacos 2.x and 3.x alike.
+local nacos_tokens = {}
+
+local function nacos_login(cfg)
+    local key = concat(cfg.addrs, ",") .. "|" .. cfg.username
+    local t = nacos_tokens[key]
+    if t and ngx.now() < t.renew then
+        return t.token
+    end
+    local res, err = _M.request(cfg.addrs, "/nacos/v1/auth/login", {
+        method = "POST",
+        body = "username=" .. ngx.escape_uri(cfg.username) .. "&password=" .. ngx.escape_uri(cfg.password or ""),
+        headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+    })
+    if not res then
+        return nil, err
+    end
+    local doc = cjson.decode(res.body or "")
+    if res.status ~= 200 or type(doc) ~= "table" or type(doc.accessToken) ~= "string" then
+        return nil, "nacos: login as " .. cfg.username .. ": status " .. res.status
+    end
+    local ttl = tonumber(doc.tokenTtl) or 18000
+    nacos_tokens[key] = { token = doc.accessToken, renew = ngx.now() + ttl * 0.9 }
+    return doc.accessToken
+end
+
+-- nacos_get sends a GET to Nacos, with an access token when cfg has a
+-- username. A 403 (token expired or revoked) logs in again once.
+function _M.nacos_get(cfg, path)
+    if not cfg.username or cfg.username == "" then
+        return _M.request(cfg.addrs, path)
+    end
+    for attempt = 1, 2 do
+        local token, err = nacos_login(cfg)
+        if not token then
+            return nil, err
+        end
+        local sep = path:find("?", 1, true) and "&" or "?"
+        local res, rerr = _M.request(cfg.addrs, path .. sep .. "accessToken=" .. ngx.escape_uri(token))
+        if not res or res.status ~= 403 or attempt == 2 then
+            return res, rerr
+        end
+        nacos_tokens[concat(cfg.addrs, ",") .. "|" .. cfg.username] = nil
+    end
+end
+
 function _M.fetch_nacos(cfg, name)
     local q = {
         "serviceName=" .. ngx.escape_uri(name),
@@ -186,9 +235,12 @@ function _M.fetch_nacos(cfg, name)
     if cfg.namespace and cfg.namespace ~= "" then
         q[#q + 1] = "namespaceId=" .. ngx.escape_uri(cfg.namespace)
     end
-    local res, err = _M.request(cfg.addrs, "/nacos/v1/ns/instance/list?" .. concat(q, "&"))
+    local res, err = _M.nacos_get(cfg, "/nacos/v1/ns/instance/list?" .. concat(q, "&"))
     if not res then
         return nil, err
+    end
+    if res.status == 401 or res.status == 403 then
+        return nil, "nacos: not authorized (set MICRO_REGISTRY_USERNAME / MICRO_REGISTRY_PASSWORD)"
     end
     -- nacos answers an unknown service with an error status
     if res.status >= 400 and res.status < 500 then

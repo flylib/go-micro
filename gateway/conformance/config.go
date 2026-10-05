@@ -16,6 +16,8 @@
 //	MICRO_REGISTRY_ADDRESS        comma-separated host:port
 //	MICRO_REGISTRY_NAMESPACE      nacos namespace (optional)
 //	MICRO_REGISTRY_GROUP          nacos group (optional)
+//	MICRO_REGISTRY_USERNAME       nacos username, for servers with auth on (optional)
+//	MICRO_REGISTRY_PASSWORD       nacos password
 //	MICRO_GATEWAY_RULES           rules source URI the gateway was started with
 //	CONFORMANCE_ADVERTISE_HOST    host the gateway can reach backends at (default: first private IP)
 //	CONFORMANCE_REGISTRY_STOP     shell command that stops the registry (D4; optional)
@@ -52,6 +54,8 @@ type config struct {
 	registryAddrs []string
 	namespace     string
 	group         string
+	username      string
+	password      string
 	rules         string
 	advertiseHost string
 	registryStop  string
@@ -67,6 +71,8 @@ func loadConfig() config {
 		registry:      os.Getenv("MICRO_REGISTRY"),
 		namespace:     os.Getenv("MICRO_REGISTRY_NAMESPACE"),
 		group:         os.Getenv("MICRO_REGISTRY_GROUP"),
+		username:      os.Getenv("MICRO_REGISTRY_USERNAME"),
+		password:      os.Getenv("MICRO_REGISTRY_PASSWORD"),
 		rules:         os.Getenv("MICRO_GATEWAY_RULES"),
 		advertiseHost: os.Getenv("CONFORMANCE_ADVERTISE_HOST"),
 		registryStop:  os.Getenv("CONFORMANCE_REGISTRY_STOP"),
@@ -101,6 +107,9 @@ func (c config) newRegistry() (registry.Registry, error) {
 		}
 		if c.group != "" {
 			opts = append(opts, nacos.WithGroupName(c.group))
+		}
+		if c.username != "" {
+			opts = append(opts, nacos.WithAuth(c.username, c.password))
 		}
 		return nacos.NewRegistry(opts...), nil
 	default:
