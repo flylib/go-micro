@@ -25,6 +25,8 @@ go test -count=1 -v .
 | Variable | Meaning |
 |---|---|
 | `GATEWAY_ADDR` | Gateway address. When unset, the gateway cases are skipped. |
+| `GATEWAY_HTTP_ADDR` | Gateway HTTP/JSON entry address (SPEC §2.1). When unset, the J cases are skipped. |
+| `GATEWAY_HTTP_H2C` | `false` for an HTTP/1.1-only entry: the J cases then skip their h2c runs. |
 | `MICRO_REGISTRY`, `MICRO_REGISTRY_ADDRESS` | Registry the gateway reads. Backends register here. |
 | `MICRO_REGISTRY_NAMESPACE`, `MICRO_REGISTRY_GROUP` | Nacos namespace and group, if not the defaults. |
 | `MICRO_GATEWAY_RULES` | Rules source URI the gateway was started with: `file://`, `etcd://`, `consul://` or `nacos://`. The suite overwrites it. |

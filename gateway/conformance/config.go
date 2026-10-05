@@ -8,6 +8,7 @@
 // bootstrap (SPEC.md section 11) so one env file can drive both:
 //
 //	GATEWAY_ADDR                  gateway listen address, e.g. localhost:8080 (unset: gateway cases skip)
+//	GATEWAY_HTTP_ADDR             gateway HTTP/JSON entry address (unset: J cases skip)
 //	MICRO_REGISTRY                etcd | consul | nacos
 //	MICRO_REGISTRY_ADDRESS        comma-separated host:port
 //	MICRO_REGISTRY_NAMESPACE      nacos namespace (optional)
@@ -40,6 +41,7 @@ const (
 
 type config struct {
 	gateway       string
+	httpGateway   string
 	registry      string
 	registryAddrs []string
 	namespace     string
@@ -53,6 +55,7 @@ type config struct {
 func loadConfig() config {
 	c := config{
 		gateway:       os.Getenv("GATEWAY_ADDR"),
+		httpGateway:   os.Getenv("GATEWAY_HTTP_ADDR"),
 		registry:      os.Getenv("MICRO_REGISTRY"),
 		namespace:     os.Getenv("MICRO_REGISTRY_NAMESPACE"),
 		group:         os.Getenv("MICRO_REGISTRY_GROUP"),

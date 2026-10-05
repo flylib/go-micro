@@ -19,8 +19,9 @@ The two implementations differ in how they are built:
 | Rules source | go-micro `config/source` (etcd, consul, nacos); files polled | Lua readers of the same sources |
 | Plugins | Go, in `gateway/proxy` | Lua |
 | Extension | Go code (compiled in) | Lua (hot-loadable) |
+| HTTP/JSON entry (§2.1, optional) | `net/http` + chi (HTTP/1.1 and h2c), or fasthttp (HTTP/1.1) | Not yet |
 
-Out of scope for v1 (§13): HTTP/JSON transcoding, distributed rate limiting, the mdns registry.
+Out of scope for v1 (§13): field-mapped REST transcoding, distributed rate limiting, the mdns registry.
 
 **Terms**
 - **Rules** — the hot-reloadable routing and policy document (§9).
@@ -33,6 +34,40 @@ Out of scope for v1 (§13): HTTP/JSON transcoding, distributed rate limiting, th
 - **Upstream:** gRPC over h2c. Upstream TLS is a bootstrap option (`MICRO_GATEWAY_UPSTREAM_TLS`), because go-micro does not advertise TLS in the registry.
 - **RPC types:** all four MUST be supported — unary, server streaming, client streaming and bidirectional.
 - **Payloads:** messages MUST be forwarded as opaque frames. The gateway never decodes payloads and needs no `.proto` files.
+
+### 2.1 HTTP/JSON entry (optional)
+
+A gateway MAY also accept plain HTTP calls with JSON bodies, for clients that do not speak gRPC. When it does, the entry MUST behave as follows. It is enabled by `MICRO_GATEWAY_HTTP_ADDRESS` (§11) and listens on its own address. The gRPC entry is unchanged.
+
+**Protocol.** HTTP/1.1 MUST be accepted. Cleartext HTTP/2 (h2c) on the same address and TLS SHOULD be supported. An implementation MAY also offer an HTTP/1.1-only server, as the Go gateway does with its fasthttp option.
+
+**Mapping.** `POST /api/<service>/<Handler>/<Method>` becomes the gRPC call `/<service>.<Handler>/<Method>`. This is the path go-micro's client uses (§3.1), and it matches the `/api/...` URLs that `micro server` shows. From there, the call is handled exactly like one arriving on the gRPC entry: route matching (§3.2), plugins (§9.4), discovery, load balancing and pre-send retries (§4–§6).
+
+**Body.** The request body is the JSON request message. An empty body is `{}`. It is forwarded as one gRPC message with content-subtype `json` (`application/grpc+json`), so the gateway still needs no `.proto` files. go-micro's gRPC server decodes it into the handler's request type with `protojson`, which accepts both proto field names and their camelCase JSON names. Upstreams that do not support the `json` subtype cannot be reached through this entry.
+
+**Headers.** Request headers become gRPC metadata with lowercase keys. These are dropped:
+- hop-by-hop headers: `Connection`, `Keep-Alive`, `Proxy-*`, `TE`, `Trailer`, `Transfer-Encoding`, `Upgrade`
+- `Host`, `Content-Length`, `Content-Type`, `Accept-Encoding`
+
+The rules of §7 then apply unchanged, including reserved `micro-gateway-*` headers, `x-forwarded-for` and `traceparent`.
+
+**Success.** A successful reply is `200 OK` with `Content-Type: application/json`. The body is the JSON response message as the service encoded it. Response metadata from the service becomes response headers, except `content-type` and `grpc-*`.
+
+**Errors.** Errors are JSON go-micro errors (`{"id","code","detail","status"}`), with the HTTP status taken from the error:
+- **go-micro error from a service** (`grpc-message` parses as one with a `code` between 100 and 599): that error is the body, and its `code` is the HTTP status.
+- **Gateway error** (§8): the same, with `id` `micro.gateway`.
+- **Any other upstream error:** the status maps from the gRPC code, the same mapping go-micro's gRPC client uses (`InvalidArgument` 400, `Unauthenticated` 401, `PermissionDenied` 403, `NotFound` 404, `DeadlineExceeded` 408, `AlreadyExists` 409, `FailedPrecondition` 412, `ResourceExhausted` 429, `Unimplemented` 501, `Unavailable` 503, everything else 500). The body is a go-micro error with `id` = service and `detail` = the gRPC message.
+
+**Requests the entry itself refuses**, each with a JSON go-micro error and `id` `micro.gateway`:
+
+| Situation | Status |
+|---|---|
+| Path not of the form `/api/<service>/<Handler>/<Method>` | 404 |
+| Method other than `POST` | 405 |
+| `Content-Type` set and not `application/json` | 415 |
+| Body larger than 4 MiB | 413 |
+
+**Unary only.** The entry carries unary calls. A reply with more than one message is answered with 500.
 
 ## 3. Routing
 
@@ -266,6 +301,7 @@ Static settings, read once. Names reuse go-micro's existing environment variable
 | Setting | Meaning |
 |---|---|
 | `MICRO_GATEWAY_ADDRESS` | Listen address, default `:8080` |
+| `MICRO_GATEWAY_HTTP_ADDRESS` | HTTP/JSON entry listen address (§2.1); empty disables it |
 | `MICRO_REGISTRY` | `etcd`, `consul` or `nacos` |
 | `MICRO_REGISTRY_ADDRESS` | Comma-separated `host:port` list |
 | `MICRO_REGISTRY_NAMESPACE` / `MICRO_REGISTRY_GROUP` | Nacos namespace and group |
@@ -296,7 +332,7 @@ The rules backend is independent of `MICRO_REGISTRY`. For example, rules can liv
 
 ## 13. Out of scope for v1
 
-- **HTTP/JSON to gRPC transcoding.**
+- **Field-mapped REST transcoding** (`google.api.http` annotations, path and query parameters bound to fields). The HTTP/JSON entry (§2.1) forwards whole JSON messages only.
 - **Distributed rate limiting** (shared counters across gateway instances).
 - **Upstream mTLS** beyond the single TLS switch.
 - **mdns registry:** not reachable from OpenResty, and multicast is unsuitable at the edge anyway.
@@ -327,3 +363,14 @@ The rules backend is independent of `MICRO_REGISTRY`. For example, rules can liv
 | P5 | Rules with an unknown plugin are rejected; previous rules stay active |
 | C1 | Rules changed in the source take effect within 5 s, with no failed calls during the swap |
 | S1 | Server-streaming and bidirectional calls are forwarded |
+
+**HTTP/JSON entry cases.** These run only when the gateway offers the entry (`GATEWAY_HTTP_ADDR`). A gateway that offers it MUST pass them. Each case runs over HTTP/1.1, and over h2c unless the entry is HTTP/1.1-only (`GATEWAY_HTTP_H2C=false`).
+
+| ID | Case |
+|---|---|
+| J1 | `POST /api/<svc>/TestService/UnaryCall` with `{}` → 200 JSON reply from `<svc>` |
+| J2 | Routes apply: an explicit `method` route for `/<y>.TestService/Echo` sends `POST /api/<y>/TestService/Echo` to its upstream |
+| J3 | Service returns `errors.BadRequest` → HTTP 400, body is that go-micro error |
+| J4 | No eligible nodes → HTTP 503, body is a go-micro error with `id: micro.gateway` |
+| J5 | `jwt-auth`: no token → 401; valid token → 200 with `micro-gateway-account` = `sub`; client headers reach the service, reserved ones do not, `traceparent` is generated |
+| J6 | `GET` → 405; path with too few segments → 404; `Content-Type: text/plain` → 415 |
