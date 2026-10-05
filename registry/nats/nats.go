@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/flylib/go-micro/registry"
-
+	"github.com/nats-io/nats.go"
 )
 
 type natsRegistry struct {

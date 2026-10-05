@@ -12,7 +12,7 @@ import (
 
 	"github.com/flylib/go-micro/logger"
 	mtls "github.com/flylib/go-micro/util/tls"
-
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type MQExchangeType string

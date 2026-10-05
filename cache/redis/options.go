@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/flylib/go-micro/cache"
-
+	rclient "github.com/go-redis/redis/v8"
 )
 
 type redisOptionsContextKey struct{}

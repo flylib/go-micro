@@ -8,7 +8,7 @@ import (
 
 	"github.com/flylib/go-micro/config/source"
 	log "github.com/flylib/go-micro/logger"
-
+	natsgo "github.com/nats-io/nats.go"
 )
 
 type nats struct {
