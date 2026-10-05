@@ -2,7 +2,7 @@ module github.com/flylib/go-micro/model/mongo
 
 go 1.26.0
 
-require github.com/flylib/go-micro v0.0.0-20261005065114-0e9978774ab2
+require github.com/flylib/go-micro v0.0.0-20261005074409-675a5b60f75d
 
 require (
 	github.com/klauspost/compress v1.19.2 // indirect

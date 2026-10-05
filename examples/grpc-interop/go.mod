@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/examples/grpc-interop
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261005065114-0e9978774ab2
+	github.com/flylib/go-micro v0.0.0-20261005074409-675a5b60f75d
 	google.golang.org/grpc v1.71.1
 	google.golang.org/protobuf v1.36.6
 )
@@ -18,8 +18,8 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
-	github.com/flylib/go-micro/client/grpc v0.0.0-20261005065114-0e9978774ab2
-	github.com/flylib/go-micro/server/grpc v0.0.0-20261005065114-0e9978774ab2
+	github.com/flylib/go-micro/client/grpc v0.0.0-20261005074409-675a5b60f75d
+	github.com/flylib/go-micro/server/grpc v0.0.0-20261005074409-675a5b60f75d
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect

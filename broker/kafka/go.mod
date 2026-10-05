@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/broker/kafka
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261005065114-0e9978774ab2
+	github.com/flylib/go-micro v0.0.0-20261005074409-675a5b60f75d
 	github.com/google/uuid v1.6.0
 	github.com/segmentio/kafka-go v0.4.51
 )
