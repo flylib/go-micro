@@ -64,7 +64,7 @@ done
 # 2. each module must build on its own, without go.work
 failed=""
 for dir in $mods; do
-  if ! (cd "$dir" && GOWORK=off go build ./... >/dev/null 2>&1); then
+  if ! (cd "$dir" && GOWORK=off go build -o /dev/null ./... >/dev/null 2>&1); then
     failed="$failed $dir"
   fi
 done
