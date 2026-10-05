@@ -28,6 +28,13 @@ calendar-based versions (YYYY.MM) for the AI-native era.
 - **MCP gateway benchmarks** — comprehensive benchmark suite for tool listing, lookup, auth, rate limiting, and JSON serialization (`gateway/mcp/benchmark_test.go`)
 - **Workflow example** — cross-service orchestration demo with Inventory, Orders, and Notifications services showing agents chaining multi-step workflows from natural language (`examples/mcp/workflow/`)
 - **Docker Compose deployment** — production-like setup with Consul registry, standalone MCP gateway, and Jaeger tracing in one `docker-compose up` (`examples/deployment/`)
+- **Edge gateways** — two gRPC edge gateways behind one contract (`gateway/SPEC.md`, `gateway/rules.schema.json`) and one black-box suite (`gateway/conformance/`): a Go gateway (`gateway/proxy/`) and an OpenResty gateway with go-micro adapter Lua libraries (`gateway/openresty/`). Both discover services in etcd, Consul or Nacos, read hot-reloaded rules from a file, etcd, Consul or Nacos, and offer routes, load balancing, retries, `ip-restriction`, `jwt-auth` and `rate-limit`.
+- **Gateway HTTP/JSON entry and REST transcoding** — `POST /api/<service>/<Handler>/<Method>`, plus `google.api.http`-style `http_rules` that map path, query and body onto the request message. `jwt-auth` `forward_claims` passes token claims (such as the user id) to services as metadata. `cmd/protoc-gen-micro-gateway` generates the rules from proto annotations.
+- **Request logging wrapper** — `wrapper/logging` logs each call with its trace id, on both the RPC and gRPC servers.
+
+### Changed
+- **Go 1.26 everywhere** — every module and `go.work` now declare `go 1.26.0` (was a mix of 1.24, 1.25 and 1.26), and CI reads the version from `go.mod`. The floor comes from dependencies: etcd client v3.7 requires Go 1.26. `registry/etcd` and `gateway/conformance` move to etcd client v3.7.0 (and grpc v1.81), like the other etcd modules.
+- **`micro new` and `micro build`** — generated `go.mod` and Dockerfiles target Go 1.26.
 
 ---
 
