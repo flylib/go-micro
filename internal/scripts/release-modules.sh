@@ -3,6 +3,9 @@
 #
 #   internal/scripts/release-modules.sh v1.0.0          # rewrite requires, build-check
 #   internal/scripts/release-modules.sh v1.0.0 --tag    # ...and create the tags locally
+#   internal/scripts/release-modules.sh --pseudo <commit>
+#       # no tags: require every module at <commit>'s pseudo-version
+#       # (v0.0.0-<UTC time>-<hash>); <commit> must already be pushed
 #
 # The plugins depend on the root module and on each other. Consumers can
 # only fetch them when those requires name real versions: Go ignores the
@@ -17,13 +20,22 @@
 # Pushing is left to the caller: git push origin main && git push origin --tags
 set -eu
 
-version="${1:?usage: $0 vX.Y.Z [--tag]}"
-case "$version" in
-  v[0-9]*.[0-9]*.[0-9]*) ;;
-  *) echo "version must look like v1.2.3, got $version" >&2; exit 1 ;;
-esac
 tag=false
-[ "${2:-}" = "--tag" ] && tag=true
+if [ "${1:-}" = "--pseudo" ]; then
+  commit=$(git rev-parse --verify "${2:?usage: $0 --pseudo <commit>}^{commit}")
+  # Go's pseudo-version for an untagged commit: committer time in UTC and
+  # the 12-character commit hash
+  ts=$(TZ=UTC git show -s --format=%cd --date=format-local:%Y%m%d%H%M%S "$commit")
+  version="v0.0.0-$ts-$(echo "$commit" | cut -c1-12)"
+else
+  version="${1:?usage: $0 vX.Y.Z [--tag] | --pseudo <commit>}"
+  case "$version" in
+    v[0-9]*.[0-9]*.[0-9]*) ;;
+    *) echo "version must look like v1.2.3, got $version" >&2; exit 1 ;;
+  esac
+  [ "${2:-}" = "--tag" ] && tag=true
+fi
+echo "release version: $version"
 
 root=$(git rev-parse --show-toplevel)
 cd "$root"
@@ -69,7 +81,8 @@ else
   echo "committed: chore: require $version for all in-repo modules"
 fi
 
-# 3. tags: root and every non-example module
+# 3. tags: root and every non-example module (not for pseudo-versions)
+case "$version" in v0.0.0-*) exit 0 ;; esac
 tags=""
 for dir in $mods; do
   case "$dir" in examples/*) continue ;; esac
