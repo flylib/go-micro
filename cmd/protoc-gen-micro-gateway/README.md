@@ -89,3 +89,5 @@ Nothing changes on the service side:
 ```go
 uid, _ := metadata.Get(ctx, "user-id")
 ```
+
+The gateway removes inbound `user-id` headers on every call, on every route. Clients cannot forge the value.
