@@ -1,0 +1,40 @@
+101a102,104
+> -- go-micro patch: defined after Parser:parsescalar, used by parseflowstyle too
+> local plainscalar
+> 
+335a339
+>       local quoted = sfind(line, '^%s*["\']') ~= nil
+339a344,346
+>       if not quoted then
+>         s = plainscalar(s)  -- go-micro patch: type plain flow scalars
+>       end
+505c512,522
+<   local v = line
+---
+>   local v = plainscalar(line)
+>   if type(v) ~= 'string' then
+>     return v
+>   end
+>   return s or v
+> end
+> 
+> -- go-micro patch: plainscalar applies the YAML core schema to an unquoted
+> -- scalar. Upstream only did this in block style; flow style ({a: 1})
+> -- returned every value as a string.
+> plainscalar = function(v)
+525c542
+<   return s or v
+---
+>   return v
+560c577,580
+<     if sfind(rest, '^[^\'\"%s]*:%s*$') or sfind(rest, '^[^\'\"%s]*:%s+.') then
+---
+>     -- go-micro patch: an entry starting with { or [ is a flow collection
+>     -- (`- {name: a}`), not an inline nested hash
+>     local flow = sfind(rest, '^[%[{]') ~= nil
+>     if not flow and (sfind(rest, '^[^\'\"%s]*:%s*$') or sfind(rest, '^[^\'\"%s]*:%s+.')) then
+617c637,638
+<       tinsert(seq, self:parsescalar(rest, lines, indent2))
+---
+>       -- go-micro patch: keep one value; flow scalars also return the rest
+>       tinsert(seq, (self:parsescalar(rest, lines, indent2)))

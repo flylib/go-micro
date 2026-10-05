@@ -1,0 +1,117 @@
+# go-micro OpenResty gateway. docker-entrypoint.sh renders this template:
+#   __LISTEN__    from MICRO_GATEWAY_ADDRESS (default 8080)
+#   __RESOLVER__  the container's nameserver, for registry host names
+#   __SCHEME__    grpcs when MICRO_GATEWAY_UPSTREAM_TLS=true, else grpc
+
+worker_processes auto;
+worker_rlimit_nofile 65535;
+error_log /dev/stderr notice;
+pid /tmp/nginx.pid;
+
+# bootstrap settings read by init_by_lua (SPEC 11)
+env MICRO_REGISTRY;
+env MICRO_REGISTRY_ADDRESS;
+env MICRO_REGISTRY_NAMESPACE;
+env MICRO_REGISTRY_GROUP;
+env MICRO_GATEWAY_RULES;
+env MICRO_GATEWAY_TRUSTED_PROXIES;
+
+events {
+    worker_connections 4096;
+}
+
+http {
+    lua_package_path "/opt/micro/lib/?.lua;/opt/micro/vendor/lua/?.lua;;";
+    lua_socket_log_errors off;
+
+    lua_shared_dict micro_rules    4m;   # rules document and generation
+    lua_shared_dict micro_registry 16m;  # node lists per service
+    lua_shared_dict micro_want     1m;   # services to keep refreshed
+    lua_shared_dict micro_limit    16m;  # rate-limit buckets
+    lua_shared_dict micro_p2c      2m;   # p2c latency and in-flight
+    lua_shared_dict micro_locks    1m;
+
+    resolver __RESOLVER__ ipv6=off valid=10s;
+
+    log_format micro escape=json '{"time":"$time_iso8601","method":"$micro_method",'
+        '"service":"$micro_service","route":"$micro_route","client_ip":"$micro_client_ip",'
+        '"upstream":"$upstream_addr","duration":"${request_time}s","code":"$micro_code",'
+        '"trace_id":"$micro_trace_id"}';
+
+    init_by_lua_block {
+        require("resty.micro.gateway").init({ schema = "/opt/micro/lib/resty/micro/schema.json" })
+    }
+    init_worker_by_lua_block {
+        require("resty.micro.gateway").init_worker()
+    }
+
+    upstream micro_nodes {
+        server 0.0.0.1; # placeholder: balance() picks every peer
+        balancer_by_lua_block {
+            require("resty.micro.gateway").balance()
+        }
+        keepalive 256;
+    }
+
+    server {
+        listen __LISTEN__;
+        http2 on;
+        client_max_body_size 0;
+        access_log /dev/stdout micro;
+
+        # set once per call; survive the error_page redirects below
+        set $micro_method "";
+        set $micro_service "";
+        set $micro_route "";
+        set $micro_client_ip "";
+        set $micro_trace "";
+        set $micro_trace_id "";
+        set $micro_code "";
+        set $micro_p2c "";
+        set $micro_grpc_status "";
+        set $micro_grpc_message "";
+
+        log_by_lua_block {
+            require("resty.micro.gateway").log()
+        }
+
+        location / {
+            access_by_lua_block {
+                require("resty.micro.gateway").access()
+            }
+            grpc_pass __SCHEME__://micro_nodes;
+            # retry on connect errors and connect timeouts only; nginx
+            # never retries a POST that reached a node (SPEC 6)
+            grpc_next_upstream error timeout;
+
+            # no add_trailer here: it would make nginx expect trailers on
+            # proxied replies and drop the status of upstream errors sent
+            # trailers-only. Gateway errors go to the locations below.
+            error_page 502 = @micro_502;
+            error_page 504 = @micro_504;
+            error_page 500 = @micro_500;
+        }
+
+        # gateway errors end the stream with real trailers (SPEC 8)
+        location @micro_error {
+            add_trailer grpc-status $micro_grpc_status always;
+            add_trailer grpc-message $micro_grpc_message always;
+            content_by_lua_block { require("resty.micro.gateway").gateway_error() }
+        }
+        location @micro_502 {
+            add_trailer grpc-status $micro_grpc_status always;
+            add_trailer grpc-message $micro_grpc_message always;
+            content_by_lua_block { require("resty.micro.gateway").upstream_error(502) }
+        }
+        location @micro_504 {
+            add_trailer grpc-status $micro_grpc_status always;
+            add_trailer grpc-message $micro_grpc_message always;
+            content_by_lua_block { require("resty.micro.gateway").upstream_error(504) }
+        }
+        location @micro_500 {
+            add_trailer grpc-status $micro_grpc_status always;
+            add_trailer grpc-message $micro_grpc_message always;
+            content_by_lua_block { require("resty.micro.gateway").upstream_error(500) }
+        }
+    }
+}
