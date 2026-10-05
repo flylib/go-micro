@@ -10,34 +10,24 @@ calendar-based versions (YYYY.MM) for the AI-native era.
 ## [Unreleased]
 
 ### Added
-- **A2A protocol — both directions** — `gateway/a2a` exposes registered agents over the open Agent2Agent (A2A) protocol so agents on other frameworks can discover and call them: Agent Cards are generated from registry metadata (the same way the MCP gateway derives tools), and incoming tasks are translated to the agent's existing `Agent.Chat` RPC, with no per-agent code (`micro a2a serve`). The outbound `a2a.Client` calls external A2A agents by URL, wired into `flow.A2A(url)` (a workflow step) and `delegate` to an `http(s)` URL (from inside an agent). v1 is the synchronous JSON-RPC binding (`message/send`, `tasks/get`, card discovery); streaming and push notifications are advertised as unsupported. (`gateway/a2a/`, `cmd/micro/a2a/`)
-- **Agents (`micro.NewAgent`)** — an agent is a service with an LLM inside: it discovers its assigned services as tools, runs the model's tool loop, registers a `Chat` RPC endpoint, and is reachable like any service. `Ask` for programmatic use; `micro chat` discovers and routes to agents; `micro agent list`/`describe`. (`agent/`)
-- **Plan & delegate** — two built-in agent tools added to every agent: `plan` (an ordered, store-persisted plan surfaced back in the prompt) and `delegate` (hand a self-contained subtask to a registered agent over RPC, otherwise to an ephemeral sub-agent). No harness or graph — they're plain tools. (`agent/builtin.go`, `examples/agent-plan-delegate/`)
-- **Agent guardrails** — `MaxSteps` (stop on count), `LoopLimit` (stop repeated no-progress calls; on by default), and `ApproveTool` (human-in-the-loop / policy gate before each action), enforced at the one point every tool call passes through. (`agent/`, guide + blog)
-- **Pluggable agent memory & custom tools** — durable store-backed conversation memory by default, swappable via `AgentMemory`; register any function as a tool with `AgentTool`.
-- **Workflows (`micro.NewFlow`)** — event-driven orchestration that maps to Anthropic's workflow/agent split: an event triggers a deterministic step (or ordered durable steps), or dispatches to an agent with `FlowAgent`. (`flow/`)
-- **x402 payments** — opt-in per-call payments for tools via the x402 standard, with a pluggable facilitator and a consumer-side client + budget; the MCP gateway can advertise and require payment per tool. (`wrapper/x402/`, guide + blog)
+- **Nacos registry and config source** — `registry/nacos` and `config/source/nacos`.
 - **Scoped store state** — `store.Scope(s, database, table)` returns a store handle that confines every operation to a database/table without mutating the shared store (unlike `Init(Table(...))`, which is process-global and races between co-located components). Services, agents, and flows now each keep their state in their own table (`service/{name}`, `agent/{name}`, `flow/{name}`); the service path replaces the old `Init(store.Table(name))` global mutation with a scoped handle.
-- **Flow discovery & history CLI** — running flows now register in the registry as `type=flow` (and deregister on `Stop`), so they're discoverable like agents: `micro flow list` shows running flows, `micro flow runs <name>` shows a flow's durable run history from the store, and `micro agent history <name>` shows an agent's stored conversation. Live state comes from the registry; durable history from the scoped store.
-- **Durable workflows** — a flow can now be an ordered list of steps (a task with stages) that is checkpointed before and after each step, so a run survives a crash and resumes where it stopped without re-running completed steps. State carries a typed payload plus a `Stage` marker; flow-level `Retry` with a per-step override; runs retained for audit unless `DeleteOnSuccess`. Step actions: `Call` (RPC), `LLM` (model turn), `Dispatch` (to an agent), or any `StepFunc`. Durability is a pluggable `Checkpoint` (store-backed by default; implement the interface for Temporal/Restate). Runnable example: `examples/flow-durable/`. Blog: "Durable Workflows" (`internal/website/blog/24.md`).
-- **Agent tool-execution wrappers** — `AgentWrapTool` registers middleware around an agent's tool calls, the tool-side analogue of `client.CallWrapper`/`server.HandlerWrapper`. Use it for logging, metrics, retries, or policy; wrappers compose outermost-first and run outside the built-in guardrails. Includes a runnable example with observe + retry wrappers (`examples/agent-wrap-tool/`).
-- **Agent platform showcase** — full platform example (Users, Posts, Comments, Mail) mirroring [micro/blog](https://github.com/micro/blog), demonstrating how existing microservices become agent-accessible with zero code changes (`examples/mcp/platform/`).
-- **Blog post: "Your Microservices Are Already an AI Platform"** — walkthrough of agent-service interaction patterns using real-world services (`internal/website/blog/7.md`).
-- **Circuit breakers for MCP gateway** — per-tool circuit breakers protect downstream services from cascading failures. Configurable max failures, open-state timeout, and half-open probing. Available via `Options.CircuitBreaker` and `--circuit-breaker` CLI flag (`gateway/mcp/circuitbreaker.go`).
-- **Helm chart for MCP gateway** — official Helm chart at `deploy/helm/mcp-gateway/` with Deployment, Service, ServiceAccount, HPA, and Ingress templates. Supports Consul/etcd/mDNS registries, JWT auth, rate limiting, audit logging, per-tool scopes, TLS ingress, and auto-scaling.
-- **MCP gateway benchmarks** — comprehensive benchmark suite for tool listing, lookup, auth, rate limiting, and JSON serialization (`gateway/mcp/benchmark_test.go`)
-- **Workflow example** — cross-service orchestration demo with Inventory, Orders, and Notifications services showing agents chaining multi-step workflows from natural language (`examples/mcp/workflow/`)
-- **Docker Compose deployment** — production-like setup with Consul registry, standalone MCP gateway, and Jaeger tracing in one `docker-compose up` (`examples/deployment/`)
 - **Edge gateways** — two gRPC edge gateways behind one contract (`gateway/SPEC.md`, `gateway/rules.schema.json`) and one black-box suite (`gateway/conformance/`): a Go gateway (`gateway/proxy/`) and an OpenResty gateway with go-micro adapter Lua libraries (`gateway/openresty/`). Both discover services in etcd, Consul or Nacos, read hot-reloaded rules from a file, etcd, Consul or Nacos, and offer routes, load balancing, retries, `ip-restriction`, `jwt-auth` and `rate-limit`.
 - **Gateway HTTP/JSON entry and REST transcoding** — `POST /api/<service>/<Handler>/<Method>`, plus `google.api.http`-style `http_rules` that map path, query and body onto the request message. `jwt-auth` `forward_claims` passes token claims (such as the user id) to services as metadata. `cmd/protoc-gen-micro-gateway` generates the rules from proto annotations.
 - **Redis store and sync** — `store/redis` and `sync/redis` work on Redis (standalone, Sentinel, Cluster), Dragonfly and Valkey, so services get durable state, locks and leader election without etcd. The store keeps keys in byte order for scans and expires records with server-side TTLs. Locks are leased keys renewed while held. Both are tested on Redis 7 and Dragonfly 2.0.
 - **Request logging wrapper** — `wrapper/logging` logs each call with its trace id, on both the RPC and gRPC servers.
 
 ### Changed
+- **Module path and layout (v5.30.0)** — the module is `github.com/flylib/go-micro` (was `go-micro.dev/v5`), and pluggable backends are separate modules (`registry/etcd`, `store/postgres`, …), so importing one backend does not pull in every SDK. In-repo modules pin each other to a pushed commit's pseudo-version; there are no release tags.
 - **Go 1.26 everywhere** — every module and `go.work` now declare `go 1.26.0` (was a mix of 1.24, 1.25 and 1.26), and CI reads the version from `go.mod`. The floor comes from dependencies: etcd client v3.7 requires Go 1.26. `registry/etcd` and `gateway/conformance` move to etcd client v3.7.0 (and grpc v1.81), like the other etcd modules.
 - **`micro new` and `micro build`** — generated `go.mod` and Dockerfiles target Go 1.26.
 
+### Removed
+- **AI layer (v5.30.0)** — agents, LLM providers (`ai/`), flows, the MCP and A2A gateways, x402 payments, the `micro chat` / `micro flow` / `micro mcp` commands and the Python SDKs in `contrib/`. The upstream docs site and blog (`internal/website/`), the AI design documents (`internal/docs/`) and the MCP deployment example are gone too. `micro new` no longer generates MCP sections, and the dashboard no longer links to the agent playground.
+
 ---
+
+> Entries below are from upstream `micro/go-micro` releases. They describe features, AI and MCP included, that this fork has since removed.
 
 ## [2026.03] - March 2026
 
@@ -121,4 +111,4 @@ calendar-based versions (YYYY.MM) for the AI-native era.
 
 ---
 
-_For earlier changes, see the [git log](https://github.com/micro/go-micro/commits/master)._
+_For earlier changes, see the [git log](https://github.com/flylib/go-micro/commits/main)._

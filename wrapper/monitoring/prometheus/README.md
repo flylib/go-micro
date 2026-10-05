@@ -9,7 +9,7 @@ Resolves [micro/go-micro#2893](https://github.com/micro/go-micro/issues/2893).
 ## Installation
 
 ```go
-import prom "go-micro.dev/v5/wrapper/monitoring/prometheus"
+import prom "github.com/flylib/go-micro/wrapper/monitoring/prometheus"
 ```
 
 ## Exported Metrics
@@ -29,8 +29,8 @@ The `micro` prefix can be overridden with `prom.ServiceName("myapp")`.
 
 ```go
 import (
-    "go-micro.dev/v5"
-    prom "go-micro.dev/v5/wrapper/monitoring/prometheus"
+    "github.com/flylib/go-micro"
+    prom "github.com/flylib/go-micro/wrapper/monitoring/prometheus"
 )
 
 func main() {

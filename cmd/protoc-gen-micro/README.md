@@ -5,7 +5,7 @@ This is protobuf code generation for go-micro. We use protoc-gen-micro to reduce
 ## Install
 
 ```
-go install go-micro.dev/v5/cmd/protoc-gen-micro@v5.16.0
+go install github.com/flylib/go-micro/cmd/protoc-gen-micro@main
 ```
 
 Also required: 
@@ -86,58 +86,9 @@ Alternative specify the Go plugin paths as arguments to the `protoc` command
 protoc --plugin=protoc-gen-go=$GOPATH/bin/protoc-gen-go --plugin=protoc-gen-micro=$GOPATH/bin/protoc-gen-micro --proto_path=. --micro_out=. --go_out=. greeter.proto
 ```
 
-### Endpoint
+### HTTP endpoints
 
-Add a micro API endpoint which routes directly to an RPC method
-
-Usage:
-
-1. Clone `github.com/googleapis/googleapis` to use this feature as it requires http annotations.
-2. The protoc command must include `-I$GOPATH/src/github.com/googleapis/googleapis` for the annotations import.
-
-```diff
-syntax = "proto3";
-
-package greeter;
-option go_package = "/proto;greeter";
-
-import "google/api/annotations.proto";
-
-service Greeter {
-	rpc Hello(Request) returns (Response) {
-		option (google.api.http) = { post: "/hello"; body: "*"; };
-	}
-}
-
-message Request {
-	string name = 1;
-}
-
-message Response {
-	string msg = 1;
-}
-```
-
-The proto generates a `RegisterGreeterHandler` function with a [api.Endpoint](https://godoc.org/go-micro.dev/v3/api#Endpoint). 
-
-```diff
-func RegisterGreeterHandler(s server.Server, hdlr GreeterHandler, opts ...server.HandlerOption) error {
-	type greeter interface {
-		Hello(ctx context.Context, in *Request, out *Response) error
-	}
-	type Greeter struct {
-		greeter
-	}
-	h := &greeterHandler{hdlr}
-	opts = append(opts, api.WithEndpoint(&api.Endpoint{
-		Name:    "Greeter.Hello",
-		Path:    []string{"/hello"},
-		Method:  []string{"POST"},
-		Handler: "rpc",
-	}))
-	return s.Handle(s.NewHandler(&Greeter{h}, opts...))
-}
-```
+protoc-gen-micro ignores `google.api.http` annotations. To serve methods as REST endpoints, generate gateway rules from the same annotations with [protoc-gen-micro-gateway](../protoc-gen-micro-gateway). Both [gateways](../../gateway) then transcode HTTP/JSON to the gRPC methods.
 
 ## LICENSE
 

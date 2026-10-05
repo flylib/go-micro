@@ -36,7 +36,6 @@ Add any other context, code examples, or screenshots about the feature request h
 - [ ] I'd be willing to submit a PR for this feature (optional)
 
 ## Helpful Resources
-- [Roadmap](https://github.com/micro/go-micro/blob/master/ROADMAP.md)
-- [Contributing Guide](https://github.com/micro/go-micro/blob/master/CONTRIBUTING.md)
-- [Architecture Docs](https://github.com/micro/go-micro/tree/master/internal/website/docs/architecture.md)
-- [Discord Community](https://discord.gg/WeMU5AGxD)
+- [Roadmap](https://github.com/flylib/go-micro/blob/main/ROADMAP.md)
+- [Contributing Guide](https://github.com/flylib/go-micro/blob/main/CONTRIBUTING.md)
+- [README](https://github.com/flylib/go-micro/blob/main/README.md)

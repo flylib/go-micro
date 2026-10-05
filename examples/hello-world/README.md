@@ -57,6 +57,6 @@ micro call greeter Greeter.Hello '{"name": "Bob"}'
 
 ## Next Steps
 
-- See [pubsub-events](../pubsub-events/) for event-driven patterns
-- See [production-ready](../production-ready/) for a complete example
-- Read the [Getting Started Guide](../../internal/website/docs/getting-started.md)
+- See [multi-service](../multi-service/) for several services in one project
+- See [auth](../auth/) for JWT authentication and scopes
+- Read the [README](../../README.md)

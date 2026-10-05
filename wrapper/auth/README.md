@@ -5,7 +5,7 @@ The auth wrapper package provides server and client wrappers for adding authenti
 ## Installation
 
 ```go
-import "go-micro.dev/v5/wrapper/auth"
+import "github.com/flylib/go-micro/wrapper/auth"
 ```
 
 ## Overview
@@ -24,9 +24,9 @@ The server wrapper enforces authentication and authorization on incoming request
 
 ```go
 import (
-    "go-micro.dev/v5"
-    "go-micro.dev/v5/auth/jwt"
-    authWrapper "go-micro.dev/v5/wrapper/auth"
+    "github.com/flylib/go-micro"
+    "github.com/flylib/go-micro/auth/jwt"
+    authWrapper "github.com/flylib/go-micro/wrapper/auth"
 )
 
 func main() {
@@ -138,9 +138,9 @@ The client wrapper adds authentication tokens to outgoing requests.
 
 ```go
 import (
-    "go-micro.dev/v5"
-    "go-micro.dev/v5/client"
-    authWrapper "go-micro.dev/v5/wrapper/auth"
+    "github.com/flylib/go-micro"
+    "github.com/flylib/go-micro/client"
+    authWrapper "github.com/flylib/go-micro/wrapper/auth"
 )
 
 func main() {
@@ -232,8 +232,8 @@ Extract Bearer token from request metadata:
 
 ```go
 import (
-    "go-micro.dev/v5/metadata"
-    authWrapper "go-micro.dev/v5/wrapper/auth"
+    "github.com/flylib/go-micro/metadata"
+    authWrapper "github.com/flylib/go-micro/wrapper/auth"
 )
 
 func handler(ctx context.Context, req *Request, rsp *Response) error {
@@ -298,10 +298,10 @@ package main
 
 import (
     "context"
-    "go-micro.dev/v5"
-    "go-micro.dev/v5/auth"
-    "go-micro.dev/v5/auth/jwt"
-    authWrapper "go-micro.dev/v5/wrapper/auth"
+    "github.com/flylib/go-micro"
+    "github.com/flylib/go-micro/auth"
+    "github.com/flylib/go-micro/auth/jwt"
+    authWrapper "github.com/flylib/go-micro/wrapper/auth"
 )
 
 type Greeter struct{}
@@ -342,8 +342,8 @@ package main
 
 import (
     "context"
-    "go-micro.dev/v5"
-    authWrapper "go-micro.dev/v5/wrapper/auth"
+    "github.com/flylib/go-micro"
+    authWrapper "github.com/flylib/go-micro/wrapper/auth"
 )
 
 func main() {
@@ -365,7 +365,7 @@ func main() {
 ### Mock Auth for Tests
 
 ```go
-import "go-micro.dev/v5/auth/noop"
+import "github.com/flylib/go-micro/auth/noop"
 
 func TestService(t *testing.T) {
     // Use noop auth for testing (always grants access)

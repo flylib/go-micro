@@ -279,7 +279,7 @@ rules.Grant(&auth.Rule{
 You can test auth logic without a running server:
 
 ```go
-import "go-micro.dev/v5/auth/noop"
+import "github.com/flylib/go-micro/auth/noop"
 
 // Create auth provider (noop for testing)
 authProvider := noop.NewAuth()

@@ -47,42 +47,22 @@ cd multi-service
 go run .
 ```
 
-### [deployment](./deployment/)
-Docker Compose deployment with MCP gateway, Consul registry, and Jaeger tracing:
-- Production-like architecture in one `docker-compose up`
-- Standalone MCP gateway connected to service registry
-- Distributed tracing with OpenTelemetry + Jaeger
+### [auth](./auth/)
+Protecting services with authentication and authorization:
+- JWT tokens from `auth/jwt`
+- Auth wrappers on server and client
+- Endpoint scopes
 
-### MCP Examples
+### [graceful-stop](./graceful-stop/)
+Shutdown behaviour of the gRPC server: in-flight calls finish before the process exits.
 
-See the [mcp/](./mcp/) directory for AI agent integration examples:
-- **[hello](./mcp/hello/)** - Minimal MCP service (start here)
-- **[crud](./mcp/crud/)** - CRUD contact book with full agent documentation
-- **[workflow](./mcp/workflow/)** - Cross-service orchestration via AI agents
-- **[documented](./mcp/documented/)** - All MCP features with auth scopes
+### [grpc-interop](./grpc-interop/)
+A plain `google.golang.org/grpc` client calling a go-micro service, with no go-micro imports on the client side.
 
-### [agent-demo](./agent-demo/)
-Multi-service project management app (Projects, Tasks, Team) with seed data and agent playground integration.
+### [smoke](./smoke/)
+End-to-end smoke tests, runnable as a standalone module: the core in-process, plus Nacos integration.
 
-### [agent-plan-delegate](./agent-plan-delegate/)
-The two built-in agent capabilities in a small multi-agent system:
-- **plan** — an agent records an ordered plan in its store-backed memory before doing multi-step work
-- **delegate** — an agent hands a subtask to another agent (over RPC if it's registered, else to an ephemeral sub-agent)
-
-### [agent-wrap-tool](./agent-wrap-tool/)
-Middleware around an agent's tool execution with `AgentWrapTool`, the tool-side analogue of client/server wrappers:
-- **observe** — time every tool call and record per-tool metrics, correlated by call ID
-- **retry** — re-run a call whose result is an error, recovering from a transient failure before the model sees it
-
-### [flow-durable](./flow-durable/)
-A workflow as ordered, checkpointed steps that survives a crash and resumes where it stopped:
-- **steps** — a flow is a task with stages (`reserve → charge → confirm`), not just one LLM turn
-- **Checkpoint** — each step is persisted; on `Resume`, completed steps are not re-run (no duplicate side effects)
-
-## Coming Soon
-
-- **pubsub-events** - Event-driven architecture with NATS
-- **grpc-integration** - Using go-micro with gRPC
+For edge gateways (gRPC, HTTP/JSON and REST transcoding in front of services), see [gateway/](../gateway).
 
 ## Prerequisites
 
@@ -91,6 +71,7 @@ Some examples require external dependencies:
 - **NATS**: `docker run -p 4222:4222 nats:latest`
 - **Consul**: `docker run -p 8500:8500 consul:latest agent -dev -ui -client=0.0.0.0`
 - **Redis**: `docker run -p 6379:6379 redis:latest`
+- **Nacos**: `docker run -p 8848:8848 -p 9848:9848 -e MODE=standalone nacos/nacos-server:latest`
 
 ## Contributing
 
@@ -101,5 +82,3 @@ To add a new example:
 3. Include working code with comments
 4. Add to this index
 5. Ensure it runs with `go run .`
-
-- [smoke](smoke/) — end-to-end smoke tests (core in-process + nacos integration via podman)

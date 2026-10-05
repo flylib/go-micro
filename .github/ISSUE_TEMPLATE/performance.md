@@ -57,5 +57,4 @@ Attach pprof profiles if available:
 Add any other context about the performance issue.
 
 ## Resources
-- [Performance Guide](https://github.com/micro/go-micro/tree/master/internal/website/docs/performance.md)
 - [Benchmarking](https://pkg.go.dev/testing#hdr-Benchmarks)

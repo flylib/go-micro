@@ -22,7 +22,7 @@ import (
     "context"
     "net/http"
 
-    "go-micro.dev/v5/gateway/api"
+    "github.com/flylib/go-micro/gateway/api"
 )
 
 func main() {
@@ -146,7 +146,7 @@ type Options struct {
 
 ```go
 // cmd/micro/run/run.go
-import "go-micro.dev/v5/gateway/api"
+import "github.com/flylib/go-micro/gateway/api"
 
 gw, err := api.New(api.Options{
     Address:     ":8080",
@@ -164,7 +164,7 @@ gw, err := api.New(api.Options{
 
 ```go
 // cmd/micro/server/server.go
-import "go-micro.dev/v5/gateway/api"
+import "github.com/flylib/go-micro/gateway/api"
 
 gw, err := api.New(api.Options{
     Address:     ":8080",
@@ -182,7 +182,7 @@ gw, err := api.New(api.Options{
 
 ```go
 // Your app
-import "go-micro.dev/v5/gateway/api"
+import "github.com/flylib/go-micro/gateway/api"
 
 func main() {
     gw, err := api.New(api.Options{
@@ -252,7 +252,7 @@ cmd/micro/run/
 
 **Before:**
 ```go
-import "go-micro.dev/v5/cmd/micro/server"
+import "github.com/flylib/go-micro/cmd/micro/server"
 
 gw, err := server.StartGateway(server.GatewayOptions{
     Address: ":8080",
@@ -263,7 +263,7 @@ gw, err := server.StartGateway(server.GatewayOptions{
 
 **After:**
 ```go
-import "go-micro.dev/v5/gateway/api"
+import "github.com/flylib/go-micro/gateway/api"
 
 gw, err := api.New(api.Options{
     Address: ":8080",

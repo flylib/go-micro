@@ -17,10 +17,8 @@ We actively support the following versions of go-micro:
 
 ### How to Report
 
-Send security vulnerability reports to: **security@go-micro.dev**
-
-Or use GitHub's private security advisory feature:
-https://github.com/micro/go-micro/security/advisories/new
+Use GitHub's private security advisory feature:
+https://github.com/flylib/go-micro/security/advisories/new
 
 ### What to Include
 
@@ -58,7 +56,7 @@ When using go-micro in production:
 ### TLS/Transport Security
 
 ```go
-import "go-micro.dev/v5/transport"
+import "github.com/flylib/go-micro/transport"
 
 // Enable TLS verification (recommended)
 os.Setenv("MICRO_TLS_SECURE", "true")
@@ -67,12 +65,10 @@ os.Setenv("MICRO_TLS_SECURE", "true")
 tlsConfig := transport.SecureConfig()
 ```
 
-See [TLS Security Update](internal/website/docs/TLS_SECURITY_UPDATE.md) for details.
-
 ### Authentication
 
 ```go
-import "go-micro.dev/v5/auth"
+import "github.com/flylib/go-micro/auth"
 
 // Use JWT authentication
 service := micro.NewService(
@@ -101,7 +97,7 @@ func (h *Handler) Create(ctx context.Context, req *Request, rsp *Response) error
 Implement rate limiting for public-facing services:
 
 ```go
-import "go-micro.dev/v5/client"
+import "github.com/flylib/go-micro/client"
 
 // Client-side rate limiting
 client.NewClient(
@@ -143,7 +139,6 @@ go-micro uses reflection for automatic handler registration. While this is a del
 
 - Type safety is enforced at runtime, not compile time
 - Malformed requests won't crash services (errors are returned)
-- See [Performance Considerations](internal/website/docs/performance.md)
 
 ### TLS Certificate Verification
 
@@ -161,10 +156,10 @@ This will be the default in v6.
 
 Security updates are published as:
 - GitHub Security Advisories
-- Release notes with `[SECURITY]` prefix
+- CHANGELOG entries with a `[SECURITY]` prefix
 - CVE entries for critical issues
 
-Subscribe to releases: https://github.com/micro/go-micro/releases
+Watch the repository (https://github.com/flylib/go-micro) to be notified.
 
 ## Bug Bounty
 
@@ -173,7 +168,5 @@ We currently do not offer a bug bounty program, but we greatly appreciate respon
 ## Questions?
 
 For security questions that are not vulnerabilities, please:
-- Open a discussion: https://github.com/micro/go-micro/discussions
-- Join Discord: https://discord.gg/WeMU5AGxD
-- Email: support@go-micro.dev
+- Open an issue: https://github.com/flylib/go-micro/issues
 

@@ -21,11 +21,11 @@ Describe what you've already attempted or researched.
 Provide any additional context that might help answer your question.
 
 ## Resources you've checked
-- [ ] [Getting Started Guide](https://github.com/micro/go-micro/tree/master/internal/website/docs/getting-started.md)
-- [ ] [Examples](https://github.com/micro/go-micro/tree/master/internal/website/docs/examples)
-- [ ] [API Documentation](https://pkg.go.dev/go-micro.dev/v5)
+- [ ] [README](https://github.com/flylib/go-micro/blob/main/README.md)
+- [ ] [Examples](https://github.com/flylib/go-micro/tree/main/examples)
+- [ ] [API Documentation](https://pkg.go.dev/github.com/flylib/go-micro)
 - [ ] Searched existing issues
 
 ## Helpful links
-- [Documentation](https://github.com/micro/go-micro/tree/master/internal/website/docs)
-- [Plugins Guide](https://github.com/micro/go-micro/tree/master/internal/website/docs/plugins.md)
+- [Pluggable backends](https://github.com/flylib/go-micro/blob/main/README.md#pluggable-backends)
+- [Gateways](https://github.com/flylib/go-micro/tree/main/gateway)

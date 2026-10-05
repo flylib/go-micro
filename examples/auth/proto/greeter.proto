@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package greeter;
 
-option go_package = "go-micro.dev/v5/examples/auth/proto;greeter";
+option go_package = "github.com/flylib/go-micro/examples/auth/proto;greeter";
 
 service Greeter {
 	rpc Hello(Request) returns (Response) {}

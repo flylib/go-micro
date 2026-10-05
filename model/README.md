@@ -9,7 +9,7 @@ Unlike the `store` package (which is a raw KV abstraction), `model` provides str
 ```go
 import (
     "context"
-    "go-micro.dev/v5/model"
+    "github.com/flylib/go-micro/model"
 )
 
 // Define your model with struct tags
@@ -88,7 +88,7 @@ active, _ := db.Count(ctx, &User{}, model.Where("status", "active"))
 ### Memory (Development & Testing)
 
 ```go
-import "go-micro.dev/v5/model"
+import "github.com/flylib/go-micro/model"
 
 db := model.NewModel()
 ```
@@ -98,7 +98,7 @@ In-memory storage. No persistence. Fast. Good for tests and prototyping.
 ### SQLite (Development & Single-Node Production)
 
 ```go
-import "go-micro.dev/v5/model/sqlite"
+import "github.com/flylib/go-micro/model/sqlite"
 
 db := sqlite.New("app.db")       // File-based
 db := sqlite.New(":memory:")     // In-memory (testing)
@@ -109,7 +109,7 @@ Embedded SQL database. Zero external dependencies. Supports WHERE, indexes, orde
 ### Postgres (Production)
 
 ```go
-import "go-micro.dev/v5/model/postgres"
+import "github.com/flylib/go-micro/model/postgres"
 
 db := postgres.New("postgres://user:pass@localhost/mydb?sslmode=disable")
 ```

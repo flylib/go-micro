@@ -11,9 +11,9 @@ import (
 
 import (
 	context "context"
-	client "go-micro.dev/v5/client"
-	server "go-micro.dev/v5/server"
-	model "go-micro.dev/v5/model"
+	client "github.com/flylib/go-micro/client"
+	server "github.com/flylib/go-micro/server"
+	model "github.com/flylib/go-micro/model"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.

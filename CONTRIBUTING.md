@@ -10,7 +10,7 @@ Be respectful, inclusive, and collaborative. We're all here to build great softw
 
 1. Fork the repository
 2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/go-micro.git`
-3. Add upstream remote: `git remote add upstream https://github.com/micro/go-micro.git`
+3. Add upstream remote: `git remote add upstream https://github.com/flylib/go-micro.git`
 4. Create a feature branch: `git checkout -b feature/my-feature`
 
 ## Development Setup
@@ -99,9 +99,9 @@ richgo test -v ./...
 
 ### Documentation
 
-- Update relevant markdown files in `internal/website/docs/`
-- Add examples to `internal/website/docs/examples/` for new features
-- Update README.md for major features
+- Update the README of the package or module you change
+- Add a runnable example under `examples/` for new features
+- Update the root README.md for major features
 - Add godoc comments for exported functions/types
 
 ## Pull Request Process
@@ -187,33 +187,27 @@ Documentation improvements are always welcome!
 - Add missing examples
 - Update outdated information
 
-Documentation lives in `internal/website/docs/`. Preview locally with Jekyll:
-
-```bash
-cd internal/website
-bundle install
-bundle exec jekyll serve --livereload
-```
+Documentation lives in Markdown next to the code: the root README.md, one README per package or plugin module, and the gateway contract in `gateway/SPEC.md`.
 
 ## Community
 
 - GitHub Issues: Bug reports and feature requests
-- GitHub Discussions: Questions, ideas, and community chat
-- Sponsorship: [GitHub Sponsors](https://github.com/sponsors/micro)
+- Questions: open a [question issue](.github/ISSUE_TEMPLATE/question.md)
 
 ## Release Process
 
-Maintainers handle releases:
+The repository is not tagged. Consumers use pseudo-versions (`go get github.com/flylib/go-micro/<module>@main`). After pushing changes that modules depend on, maintainers pin every in-repo require to the pushed commit:
 
-1. Update CHANGELOG.md
-2. Tag release: `git tag -a v5.x.x -m "Release v5.x.x"`
-3. Push tag: `git push origin v5.x.x`
-4. GitHub Actions creates release
+```bash
+internal/scripts/release-modules.sh --pseudo <pushed-commit>
+```
+
+Then update CHANGELOG.md, commit and push.
 
 ## Questions?
 
-- Check [documentation](internal/website/docs/)
-- Browse [examples](internal/website/docs/examples/)
+- Read the [README](README.md)
+- Browse [examples](examples/)
 - Open a [question issue](.github/ISSUE_TEMPLATE/question.md)
 
 Thank you for contributing to Go Micro! 🎉
