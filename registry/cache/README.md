@@ -2,14 +2,14 @@
 
 Cache is a library that provides a caching layer for the go-micro [registry](https://pkg.go.dev/github.com/flylib/go-micro/registry#Registry).
 
-If you're looking for caching in your microservices use the [selector](https://micro.mu/docs/fault-tolerance.html#caching-discovery).
+If you're looking for caching in your microservices use the [selector](../../selector/README.md): the default selector already caches lookups with this package. See the [registry README](../README.md) for the registries it can wrap.
 
 ## Features
 
 - **Caching**: Caches registry lookups with configurable TTL
 - **Stale Cache Fallback**: Returns stale cached data when registry is unavailable
 - **Singleflight Protection**: Deduplicates concurrent requests for the same service
-- **Adaptive Throttling**: Rate limits failed lookups to prevent cache penetration (new in v5)
+- **Adaptive Throttling**: Rate limits failed lookups to prevent cache penetration
 
 ## Interface
 
@@ -33,7 +33,7 @@ import (
 	"github.com/flylib/go-micro/registry/cache"
 )
 
-r := registry.NewRegistry()
+r := registry.NewMDNSRegistry()
 cache := cache.New(r)
 
 services, _ := cache.GetService("my.service")
@@ -48,7 +48,7 @@ import (
 	"github.com/flylib/go-micro/registry/cache"
 )
 
-r := registry.NewRegistry()
+r := registry.NewMDNSRegistry()
 
 // Configure cache with custom options
 cache := cache.New(r,

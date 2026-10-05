@@ -34,7 +34,10 @@ Load the source into config
 
 ```go
 // Create new config
-conf := config.NewConfig()
+conf, err := config.NewConfig()
+if err != nil {
+	log.Fatal(err)
+}
 
 // Load nats source
 conf.Load(natsSource)
@@ -43,7 +46,7 @@ conf.Load(natsSource)
 ## Watch
 
 ```go
-wh, _ := natsSource.Watch()
+watcher, _ := natsSource.Watch()
 
 for {
 	v, err := watcher.Next()

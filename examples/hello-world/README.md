@@ -8,7 +8,7 @@ This example creates a basic RPC service that:
 - Listens on port 8080
 - Exposes a `Greeter.Hello` method
 - Returns a greeting message
-- Demonstrates both programmatic and HTTP access
+- Can be called over HTTP with `curl` or with `micro call`
 
 ## Run It
 
@@ -16,7 +16,7 @@ This example creates a basic RPC service that:
 go run main.go
 ```
 
-The service will start and make test calls to itself, then wait for incoming requests.
+The service registers itself, prints a sample `curl` command and waits for incoming requests.
 
 ## Test It
 
@@ -58,5 +58,5 @@ micro call greeter Greeter.Hello '{"name": "Bob"}'
 ## Next Steps
 
 - See [multi-service](../multi-service/) for several services in one project
-- See [auth](../auth/) for JWT authentication and scopes
+- See [auth](../auth/) for auth wrappers and scopes
 - Read the [README](../../README.md)

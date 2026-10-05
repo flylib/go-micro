@@ -25,13 +25,14 @@ The server wrapper enforces authentication and authorization on incoming request
 ```go
 import (
     "github.com/flylib/go-micro"
+    "github.com/flylib/go-micro/auth"
     "github.com/flylib/go-micro/auth/jwt"
     authWrapper "github.com/flylib/go-micro/wrapper/auth"
 )
 
 func main() {
     // Create auth provider
-    authProvider, _ := jwt.NewAuth()
+    authProvider := jwt.NewAuth()
 
     // Create authorization rules
     rules := auth.NewRules()
@@ -86,24 +87,24 @@ For each incoming request:
 
 #### AuthRequired
 
-Enforce auth on all endpoints (no public endpoints):
+Build `HandlerOptions` that enforce auth on all endpoints (no public endpoints), then pass them to `AuthHandler`:
 
 ```go
 micro.WrapHandler(
-    authWrapper.AuthRequired(authProvider, rules),
+    authWrapper.AuthHandler(authWrapper.AuthRequired(authProvider, rules)),
 )
 ```
 
 #### PublicEndpoints
 
-Allow specific endpoints to be public:
+Build `HandlerOptions` that allow specific endpoints to be public, then pass them to `AuthHandler`:
 
 ```go
 micro.WrapHandler(
-    authWrapper.PublicEndpoints(authProvider, rules, []string{
+    authWrapper.AuthHandler(authWrapper.PublicEndpoints(authProvider, rules, []string{
         "Health.Check",
         "Status.Version",
-    }),
+    })),
 )
 ```
 
@@ -318,15 +319,15 @@ func (g *Greeter) Hello(ctx context.Context, req *Request, rsp *Response) error 
 }
 
 func main() {
-    authProvider, _ := jwt.NewAuth()
+    authProvider := jwt.NewAuth()
     rules := auth.NewRules()
 
     service := micro.NewService(
         micro.Name("greeter"),
         micro.WrapHandler(
-            authWrapper.PublicEndpoints(authProvider, rules, []string{
+            authWrapper.AuthHandler(authWrapper.PublicEndpoints(authProvider, rules, []string{
                 "Greeter.Health",
-            }),
+            })),
         ),
     )
 
@@ -408,18 +409,24 @@ func TestWithAuth(t *testing.T) {
 
 ## Integration with Gateway
 
-If you're using the HTTP gateway (`micro server`), auth is automatically integrated:
+`micro server` (the production dashboard and HTTP gateway) always requires auth; it takes only an `--address` flag:
 
 ```bash
 # Gateway enforces auth on HTTP requests
-micro server --auth jwt
+micro server
+
+# Call a service through the gateway with a token from the /auth/tokens page
+curl -X POST http://localhost:8080/api/greeter/Greeter/Hello \
+  -H "Authorization: Bearer <token>" \
+  -d '{"name": "Alice"}'
 ```
 
-The gateway:
-1. Extracts Bearer token from HTTP `Authorization` header
-2. Verifies token
-3. Adds account to metadata
-4. Forwards to service (service still checks with wrapper)
+For `POST /api/{service}/{Handler}/{Method}` (or `/api/{service}/{Handler.Method}`), the gateway:
+1. Extracts the Bearer token from the HTTP `Authorization` header (or the `micro_token` cookie)
+2. Verifies it with the dashboard's own JWT keys and checks any endpoint scopes set on the dashboard
+3. Calls the service through the default client, as `micro call` does
+
+The gateway's token is not passed on: the `Authorization` header is dropped from the call metadata, so a service wrapped with `AuthHandler` does not see it. Calls only reach services on the default RPC server; services on `server/grpc` get `501` and are called through the edge gateways in [gateway/](../../gateway/) instead. `micro run` starts the same gateway, with auth on and a default `admin`/`micro` login.
 
 ## Best Practices
 
@@ -439,8 +446,8 @@ micro.WrapHandler(authWrapper.AuthHandler(...))
 
 ```go
 // ✅ Production
-authProvider, _ := jwt.NewAuth(
-    auth.Issuer("your-company"),
+authProvider := jwt.NewAuth(
+    auth.Namespace("your-company"), // becomes the account's Issuer
     auth.PrivateKey(privateKey),
     auth.PublicKey(publicKey),
 )

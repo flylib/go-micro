@@ -16,7 +16,7 @@ docker run -p 8080:8080 \
 
 The image builds offline: every Lua dependency is vendored ([vendor/VENDOR.md](vendor/VENDOR.md)). It runs as `nobody`.
 
-Bootstrap settings ([SPEC.md §11](../SPEC.md#11-bootstrap)) are the same as the Go gateway's:
+Bootstrap settings ([SPEC.md §11](../SPEC.md#11-bootstrap)) are the Go gateway's, except that the broker settings are replaced by `MICRO_GATEWAY_WS_UPSTREAM`:
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -24,6 +24,7 @@ Bootstrap settings ([SPEC.md §11](../SPEC.md#11-bootstrap)) are the same as the
 | `MICRO_REGISTRY` | — | `etcd`, `consul` or `nacos` |
 | `MICRO_REGISTRY_ADDRESS` | — | Comma-separated `host:port` list |
 | `MICRO_REGISTRY_NAMESPACE`, `MICRO_REGISTRY_GROUP` | public, `DEFAULT_GROUP` | Nacos namespace and group |
+| `MICRO_REGISTRY_USERNAME`, `MICRO_REGISTRY_PASSWORD` | — | Nacos credentials (auth is on by default since Nacos 3.0). A `nacos://` rules source without `user:pass@` uses them too. |
 | `MICRO_GATEWAY_RULES` | — | `file://`, `etcd://`, `consul://` or `nacos://`, or `none` |
 | `MICRO_GATEWAY_TRUSTED_PROXIES` | — | CIDRs whose `x-forwarded-for` is trusted |
 | `MICRO_GATEWAY_UPSTREAM_TLS` | `false` | Dial nodes with TLS (`grpcs://`) |
@@ -71,6 +72,10 @@ curl 'localhost:8090/v1/users/42?verbose=true'   # -> /users.Users/Get {"id":"42
 - **Generating rules.** [protoc-gen-micro-gateway](../../cmd/protoc-gen-micro-gateway) generates the rules from `google.api.http` annotations.
 - **Caller identity.** Pair the rules with `jwt-auth` `forward_claims: {user-id: sub}` to give services the caller's id in metadata (§9.5). Clients cannot set those keys themselves.
 - **Implementation.** [httprules.lua](lib/resty/micro/httprules.lua) mirrors the Go gateway. Numbers with more than 15 significant digits are quoted before cjson decodes the body, so int64 ids stay exact. `response_body` is cut out of the reply text without decoding it.
+
+## Nacos
+
+The Lua libraries read Nacos over its HTTP OpenAPI (`/nacos/v1/ns/instance/list`, `/nacos/v1/cs/configs`). Nacos 2.x and 3.x both serve it. With `MICRO_REGISTRY_USERNAME` set, the gateway logs in at `/nacos/v1/auth/login` and sends the access token with every request. It keeps the token per worker until 90% of its TTL, and logs in again when Nacos answers 403. This is tested on Nacos 2.4.3 and 3.1.1, with and without authentication.
 
 ## WebSocket entry
 

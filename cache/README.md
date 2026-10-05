@@ -9,4 +9,4 @@ In-process/remote caching with TTL — `Get/Put/Delete` with expiry, for hot dat
 
 ## Implementations
 
-memory (default, go-cache based) · Redis (`cache/redis`, own module).
+memory (default, an in-process map guarded by a `sync.RWMutex`) · Redis (`cache/redis`, own module).

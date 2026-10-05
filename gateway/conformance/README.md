@@ -31,6 +31,7 @@ go test -count=1 -v .
 | `MICRO_BROKER`, `MICRO_BROKER_ADDRESS` | The broker the gateway uses for push (`nats`). When unset, W5 and W6 are skipped. |
 | `MICRO_REGISTRY`, `MICRO_REGISTRY_ADDRESS` | Registry the gateway reads. Backends register here. |
 | `MICRO_REGISTRY_NAMESPACE`, `MICRO_REGISTRY_GROUP` | Nacos namespace and group, if not the defaults. |
+| `MICRO_REGISTRY_USERNAME`, `MICRO_REGISTRY_PASSWORD` | Nacos credentials, for servers with authentication on. |
 | `MICRO_GATEWAY_RULES` | Rules source URI the gateway was started with: `file://`, `etcd://`, `consul://` or `nacos://`. The suite overwrites it. |
 | `CONFORMANCE_ADVERTISE_HOST` | Host the gateway can reach backends at. Defaults to the first private IP. When the gateway runs in a container, use an address the container can reach. |
 | `CONFORMANCE_REGISTRY_STOP` / `CONFORMANCE_REGISTRY_START` | Shell commands that stop and start the registry, for case D4. When unset, D4 is skipped. |

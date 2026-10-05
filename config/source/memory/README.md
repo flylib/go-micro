@@ -37,7 +37,10 @@ Load the source into config
 
 ```go
 // Create new config
-conf := config.NewConfig()
+conf, err := config.NewConfig()
+if err != nil {
+	log.Fatal(err)
+}
 
 // Load memory source
 conf.Load(memorySource)

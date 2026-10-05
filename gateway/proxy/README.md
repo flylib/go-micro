@@ -1,10 +1,13 @@
 # Go Gateway
 
-The Go implementation of the go-micro edge gateway. It accepts gRPC calls from outside, applies the [rules](../rules.example.yaml), and forwards each call to a node of the target go-micro service. Its behaviour is defined by [SPEC.md](../SPEC.md), and it passes the full [conformance suite](../conformance) against etcd, Consul and Nacos.
+The Go implementation of the go-micro edge gateway. It accepts calls from outside, applies the [rules](../rules.example.yaml), and forwards each call to a node of the target go-micro service. Calls arrive over gRPC, or over the optional HTTP/JSON and WebSocket entries. Its behaviour is defined by [SPEC.md](../SPEC.md), and it passes the full [conformance suite](../conformance) against etcd, Consul and Nacos.
 
 ## Run
 
+Build from a checkout of this repository:
+
 ```bash
+git clone https://github.com/flylib/go-micro && cd go-micro/gateway/proxy
 go build -o micro-gateway ./cmd/micro-gateway
 
 MICRO_REGISTRY=nacos \
@@ -12,6 +15,8 @@ MICRO_REGISTRY_ADDRESS=127.0.0.1:8848 \
 MICRO_GATEWAY_RULES='nacos://127.0.0.1:8848/micro-gateway-rules?group=DEFAULT_GROUP' \
 ./micro-gateway
 ```
+
+**Why not `go install`.** Go refuses `go install github.com/flylib/go-micro/gateway/proxy/cmd/micro-gateway@main`. This module keeps `replace` directives that point at the rest of the repository, so it builds inside the repository without `go.work`, and `go install pkg@version` does not accept modules with `replace` directives. Using the gateway as a library (`go get github.com/flylib/go-micro/gateway/proxy@main`) is unaffected.
 
 It is configured by the bootstrap settings of [SPEC.md §11](../SPEC.md#11-bootstrap):
 
@@ -23,6 +28,7 @@ It is configured by the bootstrap settings of [SPEC.md §11](../SPEC.md#11-boots
 | `MICRO_REGISTRY` | — | `etcd`, `consul` or `nacos` |
 | `MICRO_REGISTRY_ADDRESS` | — | Comma-separated `host:port` list |
 | `MICRO_REGISTRY_NAMESPACE`, `MICRO_REGISTRY_GROUP` | public, `DEFAULT_GROUP` | Nacos namespace and group |
+| `MICRO_REGISTRY_USERNAME`, `MICRO_REGISTRY_PASSWORD` | — | Nacos credentials (auth is on by default since Nacos 3.0). A `nacos://` rules source without `user:pass@` uses them too. |
 | `MICRO_GATEWAY_RULES` | — | Rules source: `file://`, `etcd://`, `consul://` or `nacos://`. `none` means convention routing with no plugins. |
 | `MICRO_GATEWAY_TRUSTED_PROXIES` | — | CIDRs whose `x-forwarded-for` is trusted |
 | `MICRO_GATEWAY_UPSTREAM_TLS` | `false` | Dial nodes with TLS |
@@ -142,6 +148,7 @@ It does not use go-micro's server `Router` and client. Those would decode upstre
 - `registry` and `registry/cache` for discovery. The cache watches changes and serves cached nodes while the registry is down (§4.4).
 - `selector` strategies and filters: `RoundRobin` (kept per route across calls), `Random`, `weighted.Strategy`, `weighted.VersionWeights`, `p2c.Strategy` with `p2c.Track`, and `FilterVersion` / `FilterLabel` / `FilterEndpoint`.
 - `config/source` (etcd, consul, nacos) to load and watch rules.
+- `broker` (NATS) for WebSocket pushes and topics: one subscription per account or topic with open connections.
 - `logger` for access and reload logs. Access lines use `wrapper/logging`'s field names, so gateway and service lines join on `trace_id`.
 
 **Retries happen only before a request is sent (§6).** A node is skipped when its connection is not ready within `timeout.connect`, or when the stream fails to open with `Unavailable`. Once a stream is open, the call is never retried.

@@ -10,7 +10,7 @@ We expect the use of the `flag` package. Upper case flags will be lower cased. D
 
 ```go
 dbAddress := flag.String("database_address", "127.0.0.1", "the db address")
-dbPort := flag.Int("database_port", 3306, "the db port)
+dbPort := flag.Int("database_port", 3306, "the db port")
 ```
 
 Becomes
@@ -30,7 +30,7 @@ Becomes
 flagSource := flag.NewSource(
 	// optionally enable reading of unset flags and their default
 	// values into config, defaults to false
-	IncludeUnset(true)
+	flag.IncludeUnset(true),
 )
 ```
 
@@ -40,7 +40,10 @@ Load the source into config
 
 ```go
 // Create new config
-conf := config.NewConfig()
+conf, err := config.NewConfig()
+if err != nil {
+	log.Fatal(err)
+}
 
 // Load flag source
 conf.Load(flagSource)

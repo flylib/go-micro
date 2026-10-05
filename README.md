@@ -12,8 +12,11 @@ You write services; the framework gives them service discovery, RPC, and pub/sub
 - [Multi-Service Projects](#multi-service-projects)
 - [Pluggable Backends](#pluggable-backends)
 - [Data Model](#data-model)
+- [Edge Gateways](#edge-gateways)
+- [Using the Modules](#using-the-modules)
 - [CLI](#cli)
 - [Examples](#examples)
+- [Development](#development)
 
 ## Core Concepts
 
@@ -42,14 +45,16 @@ Everything the framework does is expressed as an interface with a default implem
 | **Server** | Serves RPC handlers and subscribers | RPC | gRPC |
 | **Selector** | Picks one node from Registry results (load balancing) | round-robin | — |
 | **Codec** | Encodes/decodes messages | protobuf/JSON | grpc, bytes, jsonrpc, text |
-| **Store** | Key-value persistence | file (bbolt) | Postgres, MySQL, NATS JetStream KV |
+| **Store** | Key-value persistence | file (bbolt) | Postgres, MySQL, NATS JetStream KV, Redis (Dragonfly, Valkey), MongoDB |
 | **Config** | Dynamic configuration from sources | — | env, file, flag, CLI, NATS, Nacos, etcd, Consul, memory |
-| **Model** | Typed data layer (CRUD + queries) | memory | SQLite, Postgres |
+| **Model** | Typed data layer (CRUD + queries) | memory | SQLite, Postgres, MongoDB |
+| **Sync** | Distributed locks and leader election | memory | etcd, Redis (Dragonfly, Valkey) |
+| **Cache** | Key-value cache | memory | Redis |
 | **Logger** | Structured logging | built-in (slog-style) | slog, Zap, zerolog |
 
 Each abstraction has a README in its package directory ([registry/](registry), [broker/](broker), [wrapper/](wrapper), …) covering the concept, semantics and available backends.
 
-Supporting pieces: **Auth** (accounts/JWT), **Cache**, **Events** (JetStream streams), **Metadata** (request context), **Wrapper** (client/server middleware), **Logger**, and **Debug** (profile/trace/health).
+Supporting pieces: **Auth** (accounts/JWT), **Events** (JetStream streams), **Metadata** (request context), **Wrapper** (client/server middleware), **Logger**, and **Debug** (profile/trace/health).
 
 ### How a request flows
 
@@ -88,7 +93,7 @@ Configuration everywhere uses the functional-options pattern: `Option func(*Opti
 ```go
 service := micro.New("greeter",
     micro.Address(":8080"),
-    micro.Registry(consul.NewRegistry()),   // swaps discovery for the whole service
+    micro.Registry(consul.NewConsulRegistry()),   // swaps discovery for the whole service
 )
 ```
 
@@ -99,7 +104,7 @@ Requires **Go 1.26 or later**. Every module in this repository (core, plugins, g
 Install the CLI:
 
 ```bash
-go install github.com/flylib/go-micro/cmd/micro@latest
+go install github.com/flylib/go-micro/cmd/micro@main
 ```
 
 Scaffold a service, run it, call it:
@@ -110,10 +115,17 @@ cd helloworld
 micro run
 ```
 
-In another terminal, call it through the HTTP API gateway that `micro run` starts on `:8080`:
+In another terminal, call it with the CLI:
 
 ```bash
-curl -X POST http://localhost:8080/api/helloworld/Helloworld.Call \
+micro call helloworld Helloworld.Call '{"name":"World"}'
+```
+
+Or over HTTP, through the gateway that `micro run` starts on `:8080`. Auth is on, so log in first with the default `admin` / `micro`:
+
+```bash
+curl -c /tmp/micro.jar -d 'id=admin&password=micro' http://localhost:8080/auth/login
+curl -b /tmp/micro.jar -X POST http://localhost:8080/api/helloworld/Helloworld/Call \
   -H 'Content-Type: application/json' -d '{"name":"World"}'
 ```
 
@@ -207,16 +219,18 @@ import (
 )
 
 service := micro.New("orders",
-    micro.Registry(consul.NewRegistry()),
+    micro.Registry(consul.NewConsulRegistry()),
     micro.Transport(grpc.NewTransport()),
-    micro.Broker(nats.NewBroker()),
+    micro.Broker(nats.NewNatsBroker()),
 )
 ```
 
 - **Registry:** mDNS (default), Consul, etcd, NATS, Nacos
 - **Broker:** HTTP (default), NATS, RabbitMQ, Kafka, memory
 - **Transport:** HTTP (default), gRPC, NATS
-- **Store:** file/bbolt (default), Postgres, MySQL, NATS JetStream KV
+- **Store:** file/bbolt (default), Postgres, MySQL, NATS JetStream KV, Redis / Dragonfly / Valkey, MongoDB
+- **Sync (locks, leader election):** memory (default), etcd, Redis / Dragonfly / Valkey
+- **Model:** memory (default), SQLite, Postgres, MongoDB
 - **Config sources:** env, file, flag, CLI, memory, NATS, Nacos, etcd, Consul
 - **Logger:** built-in (default), slog, Zap, zerolog
 
@@ -239,7 +253,33 @@ var results []*User
 db.List(ctx, &results, model.Where("email", "alice@example.com"))
 ```
 
-Backends: memory (default), SQLite, Postgres.
+Backends: memory (default), SQLite, Postgres, MongoDB. See [model/](model).
+
+## Edge Gateways
+
+[gateway/](gateway) holds two edge gateways for traffic from outside the cluster: a Go gateway and an OpenResty one. They follow one contract and pass one conformance suite. Both discover services in etcd, Consul or Nacos, take hot-reloaded rules from a file, etcd, Consul or Nacos, and offer routing, load balancing, retries, IP restriction, JWT auth and rate limiting.
+
+- **gRPC** in, forwarded to services as opaque frames: no `.proto` files at the gateway.
+- **HTTP/JSON** for browsers and mini programs.
+  - `POST /api/<service>/<Handler>/<Method>`, or REST endpoints transcoded from `google.api.http` annotations. [protoc-gen-micro-gateway](cmd/protoc-gen-micro-gateway) generates the rules.
+  - JWT claims such as the user id are forwarded to services as metadata.
+- **WebSocket** `/ws`: calls, streams, topic subscriptions, and pushes from services with [`gateway/push`](gateway/push).
+
+Services only need the gRPC server (`server/grpc`) and a proto package equal to their registry name.
+
+## Using the Modules
+
+The core is `github.com/flylib/go-micro`. Every backend is its own module (`registry/nacos`, `store/redis`, `gateway/proxy`, …), so you only download the SDKs you use.
+
+```bash
+go get github.com/flylib/go-micro@main
+go get github.com/flylib/go-micro/registry/nacos@main github.com/flylib/go-micro/server/grpc@main
+```
+
+- **No release tags.** `@main` resolves to a pseudo-version of the latest commit (`v0.0.0-<time>-<hash>`). The in-repo modules require each other at one pushed commit, so any mix of them resolves to a consistent set. Pin a commit with `@<hash>`.
+- **Go 1.26 or later** for every module.
+- **Commands.** The CLI tools in the core module install with `go install …@main`: `cmd/micro`, `cmd/protoc-gen-micro`, `cmd/protoc-gen-micro-gateway`.
+- **Binaries in plugin modules.** The Go gateway's `micro-gateway` lives in a plugin module, and `go install …@version` refuses those modules. Each one keeps `replace` directives pointing into this repository, so it builds inside the repository without `go.work`. Build such binaries from a checkout (`cd gateway/proxy && go build ./cmd/micro-gateway`). Importing these modules as libraries is unaffected.
 
 ## CLI
 
@@ -264,7 +304,7 @@ Backends: memory (default), SQLite, Postgres.
 - [graceful-stop](examples/graceful-stop/) — clean shutdown
 - [grpc-interop](examples/grpc-interop/) — call go-micro from any gRPC client
 - [smoke](examples/smoke/) — end-to-end smoke tests (core + nacos via podman)
-- [gateway](gateway/) — edge gateways: gRPC, HTTP/JSON and REST transcoding
+- [gateway](gateway/) — edge gateways: gRPC, HTTP/JSON, REST transcoding and WebSocket
 
 See [all examples](examples/README.md).
 

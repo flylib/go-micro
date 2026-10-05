@@ -204,7 +204,7 @@ func (g *Greeter) Hello(ctx context.Context, req *pb.Request, rsp *pb.Response) 
 
 ```go
 micro.WrapHandler(
-    authWrapper.AuthRequired(authProvider, rules),
+    authWrapper.AuthHandler(authWrapper.AuthRequired(authProvider, rules)),
 )
 ```
 
@@ -212,10 +212,10 @@ micro.WrapHandler(
 
 ```go
 micro.WrapHandler(
-    authWrapper.PublicEndpoints(authProvider, rules, []string{
+    authWrapper.AuthHandler(authWrapper.PublicEndpoints(authProvider, rules, []string{
         "Health.Check",
         "Status.Version",
-    }),
+    })),
 )
 ```
 
@@ -379,10 +379,8 @@ if time.Until(token.Expiry) < 5*time.Minute {
 
 ## Next Steps
 
-- Read the [Auth Documentation](/docs/auth)
-- Explore [JWT Auth](/auth/jwt)
-- Try [Custom Auth Provider](/examples/auth/custom)
-- See [Multi-Tenant Auth](/examples/auth/multi-tenant)
+- Read the [Auth Wrapper Documentation](../../wrapper/auth/README.md)
+- Explore the [Auth Package](../../auth/) and [JWT Auth](../../auth/jwt/)
 
 ## Summary
 

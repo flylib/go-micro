@@ -4,16 +4,15 @@ This directory contains runnable examples demonstrating various go-micro feature
 
 ## Quick Start
 
-Each example can be run with `go run .` from its directory.
+Most examples run with `go run .` from their directory. [auth](./auth/) and [grpc-interop](./grpc-interop/) have separate `server/` and `client/` programs (run each with `go run .` from its subdirectory), and [smoke](./smoke/) is a test suite run with `go test`.
 
 ## Examples
 
 ### [hello-world](./hello-world/)
 Basic RPC service demonstrating core concepts:
 - Service creation and registration
-- Handler implementation
-- Client calls
-- Health checks
+- Handler implementation (`Greeter.Hello`)
+- Calling it with `micro call` or `curl`
 
 **Run it:**
 ```bash
@@ -49,7 +48,7 @@ go run .
 
 ### [auth](./auth/)
 Protecting services with authentication and authorization:
-- JWT tokens from `auth/jwt`
+- Pluggable auth provider (`noop.NewAuth()` in the example; swap in `auth/jwt` for real tokens)
 - Auth wrappers on server and client
 - Endpoint scopes
 

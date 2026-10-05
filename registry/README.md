@@ -22,7 +22,7 @@ server.Stop ─── Deregister(node) ───▶  node removed
 |---|---|---|
 | mDNS | built-in (default) | zeroconf, LAN/dev only |
 | memory | built-in | tests, single process |
-| Consul / etcd / NATS / Nacos | `registry/<name>` (own go.mod) | production discovery |
+| Consul / etcd / NATS / Nacos | `registry/<name>` (own go.mod) | production discovery; Nacos: see [registry/nacos](nacos) for ports and auth |
 | cache | `registry/cache` | read-through cache wrapping any registry |
 
 ```go

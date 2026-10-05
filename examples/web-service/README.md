@@ -56,4 +56,4 @@ Use regular `micro.Service` when:
 ## Next Steps
 
 - See [hello-world](../hello-world/) for RPC services
-- See [production-ready](../production-ready/) for observability
+- See [wrapper/](../../wrapper/) for observability (Prometheus metrics, OpenTelemetry tracing) and other middleware

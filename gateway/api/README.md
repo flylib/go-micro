@@ -1,19 +1,10 @@
-# API Gateway
+# API Gateway shell
 
-The `gateway/api` package provides HTTP API gateway functionality for go-micro services. It translates HTTP requests into RPC calls and serves a web dashboard for browsing and calling services.
+`gateway/api` is the HTTP server shell behind the `micro run` and `micro server` dashboards. It owns the listener, the `http.ServeMux` and shutdown. All routes come from a `HandlerRegistrar` you pass in.
 
-## Features
-
-- **HTTP to RPC translation** - Call microservices via HTTP
-- **Web dashboard** - Browse and test services in the browser
-- **Authentication** - Optional JWT-based auth
-- **MCP integration** - Expose services to AI agents
-- **Flexible configuration** - Use in dev or production
-- **Service discovery** - Auto-detect services from registry
+It is not an edge gateway. For traffic from outside the cluster, use the [Go or OpenResty gateway](..): gRPC, HTTP/JSON, REST transcoding and WebSocket.
 
 ## Usage
-
-### Basic Gateway
 
 ```go
 package main
@@ -26,12 +17,10 @@ import (
 )
 
 func main() {
-    // Create gateway with custom handler
     gw, err := api.New(api.Options{
         Address: ":8080",
         Context: context.Background(),
         HandlerRegistrar: func(mux *http.ServeMux) error {
-            // Register your HTTP handlers
             mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
                 w.Write([]byte("Hello from gateway"))
             })
@@ -41,248 +30,38 @@ func main() {
     if err != nil {
         panic(err)
     }
-
-    // Block until shutdown
-    gw.Wait()
+    gw.Wait() // blocks until the context ends, then shuts down
 }
 ```
 
-### Gateway with MCP
-
-```go
-gw, err := api.New(api.Options{
-    Address:    ":8080",
-    MCPEnabled: true,
-    MCPAddress: ":3000", // MCP on separate port
-    HandlerRegistrar: registerHandlers,
-})
-```
-
-### Gateway with Authentication
-
-```go
-gw, err := api.New(api.Options{
-    Address:     ":8080",
-    AuthEnabled: true, // Handler registrar should add auth middleware
-    HandlerRegistrar: func(mux *http.ServeMux) error {
-        // Register handlers with auth middleware
-        return registerAuthenticatedHandlers(mux)
-    },
-})
-```
-
-### Blocking Mode
-
-```go
-// Run blocks until shutdown
-err := api.Run(api.Options{
-    Address: ":8080",
-    HandlerRegistrar: registerHandlers,
-})
-```
+`api.Run(opts)` is `New` plus `Wait`. `gw.Stop()` shuts down at once, `gw.Addr()` returns the configured address, and `gw.Mux()` returns the mux, so more routes can be added later.
 
 ## Options
 
 ```go
 type Options struct {
-    // Address to listen on (default: ":8080")
-    Address string
-
-    // AuthEnabled signals that authentication is required
-    // The HandlerRegistrar should implement auth checks
-    AuthEnabled bool
-
-    // Context for cancellation (default: context.Background())
-    Context context.Context
-
-    // Logger for gateway messages (default: log.Default())
-    Logger *log.Logger
-
-    // HandlerRegistrar registers HTTP handlers on the mux
-    HandlerRegistrar func(mux *http.ServeMux) error
-
-    // MCPEnabled enables the MCP gateway
-    MCPEnabled bool
-
-    // MCPAddress is the address for MCP gateway (e.g., ":3000")
-    MCPAddress string
-
-    // Registry for service discovery (default: registry.DefaultRegistry)
-    Registry registry.Registry
+    Address          string                          // listen address, e.g. ":8080"
+    AuthEnabled      bool                            // tells the registrar to add auth; the shell itself checks nothing
+    Context          context.Context                 // cancellation (default: context.Background())
+    Logger           *log.Logger                     // default: log.Default()
+    HandlerRegistrar func(mux *http.ServeMux) error // registers every route
+    Registry         registry.Registry               // default: registry.DefaultRegistry
 }
 ```
 
-## Architecture
+## In the micro CLI
 
-```
-┌─────────────────────────────────────────┐
-│         gateway/api Package              │
-│  ┌────────────────────────────────────┐ │
-│  │  Gateway                           │ │
-│  │  - Manages HTTP server             │ │
-│  │  - Calls HandlerRegistrar          │ │
-│  │  - Starts MCP if enabled           │ │
-│  └────────────────────────────────────┘ │
-└─────────────────────────────────────────┘
-               ↓ delegates to
-┌─────────────────────────────────────────┐
-│     HandlerRegistrar (user-provided)     │
-│  ┌────────────────────────────────────┐ │
-│  │  func(mux *http.ServeMux) error    │ │
-│  │  - Registers routes                │ │
-│  │  - Adds middleware (auth, etc.)    │ │
-│  │  - Sets up templates               │ │
-│  └────────────────────────────────────┘ │
-└─────────────────────────────────────────┘
-               ↓ uses
-┌─────────────────────────────────────────┐
-│         Microservices (via RPC)          │
-└─────────────────────────────────────────┘
-```
+Both `micro run` and `micro server` start the shell through `server.StartGateway` (`cmd/micro/server/gateway.go`), with auth enabled. That registrar (`registerHandlers` in `cmd/micro/server/server.go`) serves:
 
-## Integration
-
-### In `micro run` (Development)
+- **The dashboard**: services, endpoints, logs and status, with forms to call endpoints.
+- **`POST /api/{service}/{Handler}/{Method}`**: calls the service with the JSON body through the default client, as `micro call` does (`cmd/micro/server/api.go`). Services on the gRPC server are answered with 501; use an edge gateway for those.
+- **`/health`, `/health/live`, `/health/ready`**, without auth.
+- **JWT login, tokens, users and endpoint scopes** under `/auth/`.
 
 ```go
-// cmd/micro/run/run.go
-import "github.com/flylib/go-micro/gateway/api"
-
-gw, err := api.New(api.Options{
+gw, err := server.StartGateway(server.GatewayOptions{ // GatewayOptions = api.Options
     Address:     ":8080",
-    AuthEnabled: false, // No auth in dev mode
-    HandlerRegistrar: func(mux *http.ServeMux) error {
-        // Register dev-mode handlers (no auth)
-        mux.HandleFunc("/", dashboardHandler)
-        mux.HandleFunc("/api/", apiHandler)
-        return nil
-    },
-})
-```
-
-### In `micro server` (Production)
-
-```go
-// cmd/micro/server/server.go
-import "github.com/flylib/go-micro/gateway/api"
-
-gw, err := api.New(api.Options{
-    Address:     ":8080",
-    AuthEnabled: true, // Auth required in production
-    HandlerRegistrar: func(mux *http.ServeMux) error {
-        // Register prod handlers with auth middleware
-        mux.HandleFunc("/", authMiddleware(dashboardHandler))
-        mux.HandleFunc("/api/", authMiddleware(apiHandler))
-        return nil
-    },
-})
-```
-
-### Custom Application
-
-```go
-// Your app
-import "github.com/flylib/go-micro/gateway/api"
-
-func main() {
-    gw, err := api.New(api.Options{
-        Address: ":8080",
-        HandlerRegistrar: func(mux *http.ServeMux) error {
-            // Your custom handlers
-            mux.HandleFunc("/health", healthHandler)
-            mux.HandleFunc("/metrics", metricsHandler)
-            mux.HandleFunc("/api/", proxyToServices)
-            return nil
-        },
-    })
-
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    log.Println("Gateway running on :8080")
-    gw.Wait()
-}
-```
-
-## Comparison with Old Architecture
-
-### Before (Duplicated Code)
-
-```
-cmd/micro/run/gateway/
-  └── gateway.go (300+ lines)
-
-cmd/micro/server/
-  └── gateway.go (150+ lines)
-
-❌ Code duplication
-❌ Inconsistent behavior
-❌ Hard to reuse
-```
-
-### After (Unified)
-
-```
-gateway/api/
-  └── gateway.go (150 lines, reusable)
-
-cmd/micro/server/
-  └── gateway.go (70 lines, compatibility wrapper)
-
-cmd/micro/run/
-  └── Uses api.New() directly
-
-✅ Single source of truth
-✅ Consistent behavior
-✅ Easy to reuse in custom apps
-```
-
-## Benefits
-
-1. **Reusability** - Use in any Go application, not just micro CLI
-2. **Testability** - Easy to test with custom handler registrars
-3. **Flexibility** - Supports different configurations (dev, prod, custom)
-4. **Consistency** - Same gateway code for all use cases
-5. **Maintainability** - One place to fix bugs and add features
-
-## Migration Guide
-
-### From `cmd/micro/server/gateway.go`
-
-**Before:**
-```go
-import "github.com/flylib/go-micro/cmd/micro/server"
-
-gw, err := server.StartGateway(server.GatewayOptions{
-    Address: ":8080",
     AuthEnabled: true,
-    Store: myStore,
+    Context:     ctx,
 })
 ```
-
-**After:**
-```go
-import "github.com/flylib/go-micro/gateway/api"
-
-gw, err := api.New(api.Options{
-    Address: ":8080",
-    AuthEnabled: true,
-    HandlerRegistrar: func(mux *http.ServeMux) error {
-        // Register your handlers
-        // Pass store as closure
-        return registerHandlers(mux, myStore)
-    },
-})
-```
-
-## Examples
-
-See:
-- `cmd/micro/server/gateway.go` - Production gateway with auth
-- `cmd/micro/run/run.go` - Development gateway without auth
-- `examples/gateway/` - Custom gateway examples (coming soon)
-
-## License
-
-Apache 2.0

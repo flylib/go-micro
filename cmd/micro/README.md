@@ -44,9 +44,7 @@ micro run
 This starts:
 - **API Gateway** on http://localhost:8080
 - **Web Dashboard** at http://localhost:8080
-- **Agent Playground** at http://localhost:8080/agent
 - **API Explorer** at http://localhost:8080/api
-- **MCP Tools** at http://localhost:8080/mcp/tools
 - **Hot Reload** watching for file changes
 - **Services** in dependency order
 
@@ -79,15 +77,18 @@ micro run --address :3000    # Gateway on custom port
 micro run --no-gateway       # Services only, no HTTP gateway
 micro run --no-watch         # Disable hot reload
 micro run --env production   # Use production environment
-micro run github.com/micro/blog  # Clone and run from GitHub
+micro run github.com/your-org/your-app  # Clone and run from GitHub
 ```
 
 ### Calling Services
 
-Via curl:
+Via curl. Auth is on, so log in first (default `admin` / `micro`), or create a token at http://localhost:8080/auth/tokens and send it as `Authorization: Bearer <token>`:
 ```bash
-curl -X POST http://localhost:8080/api/helloworld/Helloworld.Call -d '{"name": "World"}'
+curl -c /tmp/micro.jar -d 'id=admin&password=micro' http://localhost:8080/auth/login
+curl -b /tmp/micro.jar -X POST http://localhost:8080/api/helloworld/Helloworld/Call -d '{"name": "World"}'
 ```
+
+`/api/{service}/{Handler}/{Method}` (or `/api/{service}/{Handler.Method}`) calls the service like `micro call` does. That works for services on the default RPC server, which `micro new` generates. Services on the gRPC server (`server/grpc`) are answered with 501. Call those through an [edge gateway](../../gateway) instead.
 
 Or browse to http://localhost:8080 and use the web interface.
 
@@ -263,7 +264,7 @@ type Request struct {
 }
 
 type Response struct {
-        Message string
+        Msg string `json:"msg"`
 }
 
 func main() {
@@ -279,7 +280,7 @@ func main() {
                 return
         }
 
-        fmt.Println(rsp.Message)
+        fmt.Println(rsp.Msg)
 }
 ```
 
@@ -472,7 +473,7 @@ The `micro run` and `micro server` commands both use a unified gateway implement
 
 Previously, each command had its own gateway implementation, leading to code duplication. The unified gateway means:
 
-- New features (like MCP integration) benefit both commands
+- New features benefit both commands
 - Consistent behavior between development and production
 - Single codebase to test and maintain
 - Same HTTP API, web UI, and service discovery logic
@@ -481,14 +482,13 @@ Previously, each command had its own gateway implementation, leading to code dup
 
 Both commands provide:
 
-- **HTTP API**: `POST /api/{service}/{endpoint}` with JSON request/response
+- **HTTP API**: `POST /api/{service}/{Handler}/{Method}` with JSON request and response, for services on the default RPC server (gRPC services: use the [edge gateways](../../gateway))
 - **Service Discovery**: Automatic detection via registry (mdns/consul/etcd)
 - **Health Checks**: `/health`, `/health/live`, `/health/ready` endpoints
 - **Web Dashboard**: Browse services, test endpoints, view documentation
 - **Hot Service Updates**: Gateway automatically picks up new service registrations
 - **JWT Authentication**: Tokens, user management, login at `/auth/login`, `/auth/tokens`, `/auth/users`
 - **Endpoint Scopes**: Restrict which tokens can call which endpoints via `/auth/scopes`
-- **MCP Integration**: AI tools at `/mcp/tools`, agent playground at `/agent`
 
 ### Authentication & Scopes
 
@@ -499,8 +499,7 @@ Both `micro run` and `micro server` use the same `auth.Account` type from the go
 | Path | Description |
 |------|-------------|
 | `POST /api/{service}/{endpoint}` | HTTP API calls |
-| `POST /mcp/call` | MCP tool invocations |
-| Agent playground | Tool calls made by the AI agent |
+| `POST /{service}/{endpoint}` | Calls from the dashboard's endpoint forms |
 
 Scopes are configured via the web UI at `/auth/scopes`. Each endpoint can require one or more scopes. A token must carry at least one matching scope to call a protected endpoint. The `*` scope on a token bypasses all checks. Endpoints with no scopes set are open to any authenticated token.
 

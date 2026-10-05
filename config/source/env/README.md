@@ -87,7 +87,10 @@ Load the source into config
 
 ```go
 // Create new config
-conf := config.NewConfig()
+conf, err := config.NewConfig()
+if err != nil {
+	log.Fatal(err)
+}
 
 // Load env source
 conf.Load(src)

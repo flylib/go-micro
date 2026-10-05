@@ -11,7 +11,7 @@ Go Config makes this easy, pluggable and mergeable. You'll never have to deal wi
   in the background and automatically merges and updates an in memory view.
 
 - **Pluggable Sources** - Choose from any number of sources to load and merge config. The backend source is abstracted away into
-  a standard format consumed internally and decoded via encoders. Sources can be env vars, flags, file, etcd, k8s configmap, etc.
+  a standard format consumed internally and decoded via encoders. Sources can be env vars, flags, CLI, file, memory, etcd, consul, nacos or NATS.
 
 - **Mergeable Config** - If you specify multiple sources of config, regardless of format, they will be merged and presented in
   a single view. This massively simplifies priority order loading and changes based on environment.
