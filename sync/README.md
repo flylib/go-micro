@@ -17,4 +17,4 @@ if l, err := s.Leader("scheduler"); err == nil {
 
 ## Implementations
 
-memory (built-in, in-process — tests/dev) · etcd (`sync/etcd`, own module; clientv3/concurrency sessions).
+memory (built-in, in-process — tests/dev) · etcd (`sync/etcd`, own module; clientv3/concurrency sessions) · Redis / Dragonfly / Valkey (`sync/redis`, own module; leased keys renewed by a watchdog).

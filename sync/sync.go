@@ -1,6 +1,6 @@
 // Package sync provides distributed coordination primitives: locks and
 // leader election. The memory implementation is for single-process use;
-// distributed backends (etcd) live in submodules.
+// distributed backends (etcd, redis) live in submodules.
 package sync
 
 import (
