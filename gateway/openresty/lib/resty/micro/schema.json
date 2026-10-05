@@ -21,9 +21,27 @@
     "http_rules": {
       "type": "array",
       "items": { "$ref": "#/$defs/http_rule" }
-    }
+    },
+    "websocket": { "$ref": "#/$defs/websocket" }
   },
   "$defs": {
+    "websocket": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "WebSocket entry (SPEC.md 2.3, 9.7); present means on",
+      "properties": {
+        "plugins": { "$ref": "#/$defs/plugins" },
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^(>|(([A-Za-z0-9_-]|\\{account\\})+|\\*)(\\.(([A-Za-z0-9_-]|\\{account\\})+|\\*))*(\\.>)?)$"
+          }
+        },
+        "max_calls": { "type": "integer", "minimum": 1, "maximum": 10000 }
+      }
+    },
     "duration": {
       "type": "string",
       "pattern": "^[0-9]+(\\.[0-9]+)?(ms|s|m|h)$",

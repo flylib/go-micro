@@ -62,3 +62,13 @@ http_rules:
     path: /v1/orders
     target: /orders.Orders/Create
     body: "*"
+
+# WebSocket entry (SPEC.md section 2.3): calls, streams, topics and pushes
+# over one connection at /ws. Browsers pass the token as ?access_token=.
+websocket:
+  plugins:
+    - name: jwt-auth
+      config:
+        public_key: LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KUkVQTEFDRS1XSVRILVJFQUwtS0VZCi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo=
+        forward_claims: { user-id: sub }
+  topics: ["room.*", "user.{account}.>"]   # {account} = the token's sub

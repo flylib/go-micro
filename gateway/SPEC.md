@@ -111,6 +111,76 @@ Fields not listed in `params` stay strings. `protoc-gen-micro-gateway` fills `pa
 
 **After matching**, the call is the gRPC call to the rule's `target` (`/<service>.<Handler>/<Method>`), and §3 to §8 apply as for any call.
 
+### 2.3 WebSocket entry (optional)
+
+A gateway with the HTTP/JSON entry MAY also serve WebSocket connections (RFC 6455) at `GET /ws` on the same address. Over one connection a client can make RPC calls, open streams, subscribe to topics and receive messages pushed to its account. The entry is on when the rules document has a `websocket` section (§9.7). Without it, `/ws` is answered like any unknown path (404). `/ws` is matched before HTTP rules (§2.2).
+
+The Go gateway implements this entry. Other gateways MAY forward `/ws` to a Go gateway instead. The OpenResty gateway does, with `MICRO_GATEWAY_WS_UPSTREAM` (§11). The forwarding gateway MUST pass the client address in `X-Forwarded-For`, and the Go gateway MUST trust it (§7).
+
+**Handshake.**
+- **Connection metadata.** The upgrade request's headers become the connection's metadata, filtered as in §2.1. `Sec-WebSocket-*` headers are dropped as well.
+- **Browser tokens.** Browsers cannot set headers on a WebSocket. A query parameter `access_token=<token>` sets `authorization: Bearer <token>` when the request has no `Authorization` header.
+- **Handshake plugins.** The `websocket.plugins` (§9.7) run once, on a call whose method is `/ws`. When one rejects it, the gateway answers the upgrade request with that error as in §2.1 (for example 401) and does not upgrade.
+- **Account.** `jwt-auth` there sets the connection's *account* (the token's `sub`). It is the identity for user pushes and for `{account}` in topic patterns. A connection without `jwt-auth` has no account.
+- **Subprotocol.** When the client offers the subprotocol `micro.v1`, the gateway selects it.
+
+**Messages.** Every WebSocket message is one JSON object in a text frame.
+- **Binary frame:** the gateway closes the connection with 1003.
+- **Message over 4 MiB:** the gateway closes it with 1009.
+- **Malformed message or unknown `type`:** the gateway answers with an `error` message (status 400, with the `id` if it could read one). The connection stays open.
+
+Client to gateway:
+
+| `type` | Fields | Meaning |
+|---|---|---|
+| `call` | `id`, `method`, `body`, `metadata` | Unary call |
+| `stream` | `id`, `method`, `body`, `metadata`, `close_send` | Opens a stream. A `body`, if present, is its first message. `close_send: true` ends sending right away, which suits a server-streaming method. |
+| `send` | `id`, `body` | Sends a message on an open stream |
+| `close_send` | `id` | The client has finished sending on a stream |
+| `cancel` | `id` | Cancels a call or stream. The gateway ends it with an `error`, status 499. |
+| `subscribe` | `id`, `topic` | Subscribes the connection to a topic |
+| `unsubscribe` | `id`, `topic` | Unsubscribes |
+| `ping` | `id` | The gateway answers with `pong` |
+
+Gateway to client:
+
+| `type` | Fields | Meaning |
+|---|---|---|
+| `reply` | `id`, `body` | Result of a `call` |
+| `message` | `id`, `body` | A message on a stream |
+| `end` | `id` | The stream finished successfully |
+| `error` | `id`, `error` | The call, stream or request failed. `error` is a go-micro error object. This is the last message for that `id`. |
+| `subscribed` / `unsubscribed` | `id`, `topic` | Subscription change confirmed |
+| `event` | `topic`, `body` | A message published to a subscribed topic |
+| `push` | `body` | A message pushed to the connection's account |
+| `pong` | `id` | Answer to `ping` |
+
+**Fields.**
+- **`id`.** The client chooses it. An `id` that names an open call or stream cannot be reused, or the request gets error 400. Messages for one `id` arrive in order. Messages for different ids may interleave.
+- **`method`.** A gRPC path `/<service>.<Handler>/<Method>`. Each call or stream is handled like one on the gRPC entry: route matching (§3.2), route and global plugins (§9.4), discovery, load balancing and pre-send retries (§4–§6). §7 applies to its metadata. Plugins see the connection's metadata and the call's `metadata`, so a route with `jwt-auth` checks the handshake token.
+- **`metadata`.** An object of string values, added to the connection's metadata for that call. Keys are lowercased.
+- **`body`.** Any JSON value, forwarded as one `application/grpc+json` message (§2.1). An absent body is `{}`. Reply and message bodies are the JSON messages as the service encoded them.
+- **Errors.** Error objects follow §2.1: go-micro errors from services pass through unchanged, gateway errors have `id` `micro.gateway`, and other upstream errors are mapped from the gRPC code. A `call` whose reply has more than one message fails with 500, as in §2.1.
+
+**Limits and liveness.**
+- **Open calls.** A connection has at most `websocket.max_calls` open calls and streams (default 100). Beyond that, a new one gets error 429.
+- **Pings.** The gateway sends WebSocket pings every 30 s and closes connections that do not answer within 30 s.
+- **Slow clients.** A client that stops reading until the gateway's outgoing queue for it is full is closed with 1008.
+
+**Push and topics** need a broker (`MICRO_BROKER`, §11). Without one, `subscribe` fails with 503 and nothing is pushed.
+
+| Broker topic | Delivered as | To |
+|---|---|---|
+| `micro.push.user.<account>` | `push` | Every connection with that account, on every gateway instance |
+| `micro.push.topic.<topic>` | `event` | Every connection subscribed to `<topic>` |
+
+- **Account encoding.** In broker topics, bytes of the account outside `[A-Za-z0-9_-]` are written as `%XX`. The broker message body is the JSON `body`.
+- **Delivery.** Delivery is at most once: a connection that is not open when a message is published does not get it. Services publish with `gateway/push` (`push.ToUser`, `push.ToTopic`).
+- **Topic names.** Dot-separated segments of `[A-Za-z0-9_-]`, at most 256 bytes. Anything else gets error 400.
+- **Topic authorization.** A client may subscribe only to topics matched by a `websocket.topics` pattern, or it gets error 403.
+  - In patterns, a `*` segment matches one segment, and a final `>` matches one or more segments.
+  - `{account}` stands for the connection's account. It never matches for a connection without an account, or when the account is not a valid segment.
+
 ## 3. Routing
 
 ### 3.1 Deriving the service from the path
@@ -344,6 +414,19 @@ http_rules:
 
 Semantics are in §2.2. Two rules with the same `method` and `path` are rejected (§10).
 
+### 9.7 WebSocket
+
+```yaml
+websocket:                          # present: the /ws entry is on (§2.3)
+  plugins:                          # run once per connection, at the handshake
+    - name: jwt-auth
+      config: {public_key: "...", forward_claims: {user-id: sub}}
+  topics: ["room.*", "user.{account}.>"]   # topics clients may subscribe to; default none
+  max_calls: 100                    # open calls and streams per connection
+```
+
+A new rules document applies to new connections and to new calls and subscriptions on open ones. An open connection keeps its handshake result (account, forwarded claims).
+
 ## 10. Rules loading and hot reload
 
 1. A new rules document MUST be fully validated before use: schema (§9.1), plugin names (§9.4) and backend-dependent checks (§5.2).
@@ -366,6 +449,8 @@ Static settings, read once. Names reuse go-micro's existing environment variable
 | `MICRO_GATEWAY_RULES` | Rules source URI, see below |
 | `MICRO_GATEWAY_TRUSTED_PROXIES` | Comma-separated CIDRs (§7) |
 | `MICRO_GATEWAY_UPSTREAM_TLS` | `true` to dial nodes with TLS |
+| `MICRO_BROKER` / `MICRO_BROKER_ADDRESS` | Broker for WebSocket push and topics (§2.3): `nats`, or empty for none. Go gateway only. |
+| `MICRO_GATEWAY_WS_UPSTREAM` | `host:port` of a Go gateway's HTTP entry that `/ws` is forwarded to (§2.3). Gateways that forward WebSocket only. |
 
 **Rules sources** map onto go-micro's `config/source` backends:
 
@@ -390,7 +475,8 @@ The rules backend is independent of `MICRO_REGISTRY`. For example, rules can liv
 
 ## 13. Out of scope for v1
 
-- **Field-mapped REST transcoding** (`google.api.http` annotations, path and query parameters bound to fields). The HTTP/JSON entry (§2.1) forwards whole JSON messages only.
+- **WebSocket in OpenResty itself.** OpenResty forwards `/ws` to a Go gateway (§2.3).
+- **Guaranteed delivery of pushes.** Pushes are at most once (§2.3). Durable inboxes belong in services.
 - **Distributed rate limiting** (shared counters across gateway instances).
 - **Upstream mTLS** beyond the single TLS switch.
 - **mdns registry:** not reachable from OpenResty, and multicast is unsuitable at the edge anyway.
@@ -439,3 +525,16 @@ The rules backend is independent of `MICRO_REGISTRY`. For example, rules can liv
 | T5 | Specificity: `GET /v1/<svc>/items/special` beats `GET /v1/<svc>/items/{id}`, which beats `GET /v1/<svc>/**` |
 | T6 | No HTTP rule matches and the path is not `/api/...` → 404; a `bool` param that is not `true`/`false` → 400 |
 | T7 | `jwt-auth` with `forward_claims: {user-id: sub}`: the service receives `user-id` = `sub`, and a client-sent `user-id` header never reaches it |
+
+**WebSocket entry cases.** These run only when the gateway offers the WebSocket entry (`GATEWAY_WS_URL`). Push and topic cases (W5, W6) also need the broker the gateway uses (`MICRO_BROKER`). A gateway that offers the entry, itself or by forwarding, MUST pass them.
+
+| ID | Case |
+|---|---|
+| W1 | Two concurrent `call`s on one connection get `reply` messages matched by `id`, each from its service |
+| W2 | Service returns `errors.BadRequest` → `error` with that go-micro error; no eligible nodes → `error` with status 503 and `id: micro.gateway`; the connection stays usable |
+| W3 | `stream` with `close_send: true` to a server-streaming method → its messages, then `end`; a bidirectional stream answers each `send` |
+| W4 | Without a `websocket` section, `/ws` → 404. With `jwt-auth` in `websocket.plugins`: no token → 401 and no upgrade; `?access_token=` with a valid token → upgraded |
+| W5 | `push.ToUser(sub)` reaches both connections of that account and not a connection of another account |
+| W6 | `subscribe` to a topic allowed by `websocket.topics` → `subscribed`, then `push.ToTopic` arrives as `event`; a topic not allowed → `error` 403; `{account}` patterns match only the connection's own account |
+| W7 | Handshake headers and a call's `metadata` reach the service; with `forward_claims: {user-id: sub}` the service receives `user-id` = `sub`, and a client-set `user-id` never reaches it |
+| W8 | A malformed message → `error` 400 and the connection stays usable; a binary frame → close 1003 |
