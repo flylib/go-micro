@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/config/source/nacos
 go 1.24
 
 require (
-	github.com/flylib/go-micro v0.0.0-00010101000000-000000000000
+	github.com/flylib/go-micro v0.0.0-20261005032823-771d2b07a7e2
 	github.com/nacos-group/nacos-sdk-go/v2 v2.3.5
 )
 

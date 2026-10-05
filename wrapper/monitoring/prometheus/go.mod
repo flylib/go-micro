@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/wrapper/monitoring/prometheus
 go 1.24
 
 require (
-	github.com/flylib/go-micro v0.0.0-00010101000000-000000000000
+	github.com/flylib/go-micro v0.0.0-20261005032823-771d2b07a7e2
 	github.com/prometheus/client_golang v1.21.1
 	github.com/prometheus/client_model v0.6.1
 )

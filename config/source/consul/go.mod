@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/config/source/consul
 go 1.25.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-00010101000000-000000000000
+	github.com/flylib/go-micro v0.0.0-20261005032823-771d2b07a7e2
 	github.com/hashicorp/consul/api v1.32.1
 )
 

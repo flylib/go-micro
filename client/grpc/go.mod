@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/client/grpc
 go 1.24
 
 require (
-	github.com/flylib/go-micro v0.0.0-00010101000000-000000000000
+	github.com/flylib/go-micro v0.0.0-20261005032823-771d2b07a7e2
 	google.golang.org/grpc v1.71.1
 	google.golang.org/grpc/examples v0.0.0-20250515150734-f2d3e11f3057
 	google.golang.org/protobuf v1.36.6
