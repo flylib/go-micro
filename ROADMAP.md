@@ -17,6 +17,9 @@ Priorities come from the teams that build on this fork: services on gRPC, regist
   - Per-plugin modules, pinned by pseudo-version.
 - **Operations.**
   - `wrapper/logging` writes trace-aware access logs.
+  - The gRPC server serves the standard `grpc.health.v1` health service, for readiness and liveness.
+  - `micro-inspect` reports zombie and unhealthy registry instances to Feishu, DingTalk or WeCom.
+  - Topology, metrics and alerting through an eBPF APM (Coroot), checked with a proof of concept.
   - Every module declares the same Go version (1.26).
 
 ## Next

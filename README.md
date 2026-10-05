@@ -13,6 +13,7 @@ You write services; the framework gives them service discovery, RPC, and pub/sub
 - [Pluggable Backends](#pluggable-backends)
 - [Data Model](#data-model)
 - [Edge Gateways](#edge-gateways)
+- [Running in Production](#running-in-production)
 - [Using the Modules](#using-the-modules)
 - [CLI](#cli)
 - [Examples](#examples)
@@ -48,13 +49,14 @@ Everything the framework does is expressed as an interface with a default implem
 | **Store** | Key-value persistence | file (bbolt) | Postgres, MySQL, NATS JetStream KV, Redis (Dragonfly, Valkey), MongoDB |
 | **Config** | Dynamic configuration from sources | — | env, file, flag, CLI, NATS, Nacos, etcd, Consul, memory |
 | **Model** | Typed data layer (CRUD + queries) | memory | SQLite, Postgres, MongoDB |
+| **Health** | Readiness and liveness checks (`grpc.health.v1` on the gRPC server, HTTP handlers) | — | — |
 | **Sync** | Distributed locks and leader election | memory | etcd, Redis (Dragonfly, Valkey) |
 | **Cache** | Key-value cache | memory | Redis |
 | **Logger** | Structured logging | built-in (slog-style) | slog, Zap, zerolog |
 
 Each abstraction has a README in its package directory ([registry/](registry), [broker/](broker), [wrapper/](wrapper), …) covering the concept, semantics and available backends.
 
-Supporting pieces: **Auth** (accounts/JWT), **Events** (JetStream streams), **Metadata** (request context), **Wrapper** (client/server middleware), **Logger**, and **Debug** (profile/trace/health).
+Supporting pieces: **Auth** (accounts/JWT), **Events** (JetStream streams), **Metadata** (request context), **Wrapper** (client/server middleware), **Logger**, and **Debug** (profile/trace).
 
 ### How a request flows
 
@@ -266,6 +268,32 @@ Backends: memory (default), SQLite, Postgres, MongoDB. See [model/](model).
 - **WebSocket** `/ws`: calls, streams, topic subscriptions, and pushes from services with [`gateway/push`](gateway/push).
 
 Services only need the gRPC server (`server/grpc`) and a proto package equal to their registry name.
+
+## Running in Production
+
+A service as the edge gateways and operations tools expect it:
+
+```go
+svc := micro.New("users",
+    micro.Server(grpcserver.NewServer()),  // gRPC: gateways, health probes, any gRPC client
+    micro.Client(grpcclient.NewClient()),
+    micro.Address(":9001"),                // a fixed port, see below
+    micro.Registry(nacos.NewRegistry(registry.Addrs("nacos:8848"), nacos.WithAuth(user, pass))),
+    micro.Broker(nats.NewNatsBroker(broker.Addrs("nats:4222"))),
+    micro.WrapHandler(logging.NewHandlerWrapper()), // access logs with trace ids
+)
+health.Register("db", health.PingContextCheck(db.PingContext)) // feeds readiness
+```
+
+- **Options in any order.** Settings given before `micro.Server`, `micro.Client` or `micro.Broker` are applied to the component passed there. These include the name, registry, broker, wrappers and handlers.
+- **Fixed ports.** Without `micro.Address`, a server listens on a random port. Kubernetes Services and NetworkPolicies need a fixed one. So do eBPF tools: Coroot, for one, ignores listeners in the ephemeral port range and does not see calls to them.
+- **Health checks.** The gRPC server serves the standard `grpc.health.v1` service:
+  - **Readiness.** It follows the critical checks registered with [`health`](health), and turns `NOT_SERVING` while the service drains.
+  - **Liveness.** The service name `liveness` reports only that the process is up.
+  - **Kubernetes.** Probes need no code: `readinessProbe: {grpc: {port: 9001}}`, `livenessProbe: {grpc: {port: 9001, service: liveness}}`. Details are in [server](server#health-checks-grpc-server).
+- **Zombie instances.** [`micro-inspect`](registry/inspect) probes every node in Nacos, etcd or Consul. It alerts to Feishu, DingTalk or WeCom when a node is registered but does not answer, or reports itself unhealthy.
+- **Topology, metrics and alerts.** Use an eBPF APM such as [Coroot](https://github.com/coroot/coroot). It needs no code changes and sees gRPC, Redis, MongoDB, Kafka and NATS traffic between services. Prometheus metrics (`wrapper/monitoring/prometheus`) and OpenTelemetry traces (`wrapper/trace/opentelemetry`) are available as wrappers.
+- **Kafka for analytics.** Use `kafka.Async()` for fire-and-forget events. A synchronous publish waits for Kafka's acknowledgement.
 
 ## Using the Modules
 

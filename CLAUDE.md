@@ -47,11 +47,11 @@ go-micro/
 │   ├── push/       # push.ToUser / push.ToTopic for WebSocket clients (core module)
 │   ├── conformance/# black-box suite both gateways must pass
 │   └── api/        # HTTP shell used by `micro run` / `micro server` dashboards
-├── health/         # Health checking
+├── health/         # Health checks; served as grpc.health.v1 by server/grpc
 ├── logger/         # Logging (slog, zap, zerolog modules)
 ├── metadata/       # Context metadata
 ├── model/          # Typed data models (memory; SQLite, Postgres, MongoDB modules)
-├── registry/       # Service discovery (mDNS, memory; etcd, Consul, Nacos, NATS modules)
+├── registry/       # Service discovery (mDNS, memory; etcd, Consul, Nacos, NATS modules; inspect: micro-inspect zombie checks)
 ├── selector/       # Client-side load balancing
 ├── server/         # RPC server (mucp; gRPC module)
 ├── service/        # Service interface
@@ -70,6 +70,7 @@ go-micro/
 - **Per-plugin modules**: Each backend is its own module, so importing one does not pull in every SDK. In-repo requires are pinned to a pushed commit's pseudo-version (`internal/scripts/release-modules.sh --pseudo <commit>`). Each module also keeps `replace github.com/flylib/go-micro => ../..` so it builds standalone in the repo. There are no release tags.
 - **Gateways follow one contract**: `gateway/SPEC.md` and `rules.schema.json` define behaviour, and `gateway/conformance` enforces it. Any gateway change goes into the SPEC, both implementations and the suite together. Keep the schema copies in `proxy/`, `conformance/` and `openresty/lib/resty/micro/` identical to `gateway/rules.schema.json`.
 - **gRPC routing convention**: a service's proto package equals its registry name, so `/<service>.<Handler>/<Method>` needs no route.
+- **Option order does not matter**: service options record what they set on the server, client and broker (`service/options.go`, `onServer`/`onClient`/`onBroker`) and replay it when `Server`/`Client`/`Broker` replace a component. New options that touch those components must go through these helpers.
 - **Reflection-based registration**: Handlers are registered via reflection for minimal boilerplate. Doc comments on handler methods become endpoint metadata (`server/comments.go`).
 
 ## Code Conventions
