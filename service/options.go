@@ -51,9 +51,46 @@ type Options struct {
 	BeforeStop []func() error
 
 	Signal bool
+
+	// Service-level settings of the server, client and broker, replayed
+	// onto a replacement passed with Server, Client or Broker, so options
+	// apply whatever their order.
+	serverOps []func(server.Server)
+	clientOps []func(client.Client) client.Client
+	brokerOps []func(broker.Broker)
 }
 
 type Option func(*Options)
+
+// onServer applies f to the server now and to any server set later.
+func (o *Options) onServer(f func(server.Server)) {
+	o.serverOps = append(o.serverOps, f)
+	f(o.Server)
+}
+
+// onClient applies f to the client now and to any client set later; f
+// may return a wrapped client.
+func (o *Options) onClient(f func(client.Client) client.Client) {
+	o.clientOps = append(o.clientOps, f)
+	o.Client = f(o.Client)
+}
+
+// onBroker applies f to the broker now and to any broker set later.
+func (o *Options) onBroker(f func(broker.Broker)) {
+	o.brokerOps = append(o.brokerOps, f)
+	f(o.Broker)
+}
+
+func initServer(opts ...server.Option) func(server.Server) {
+	return func(s server.Server) { _ = s.Init(opts...) }
+}
+
+func initClient(opts ...client.Option) func(client.Client) client.Client {
+	return func(c client.Client) client.Client {
+		_ = c.Init(opts...)
+		return c
+	}
+}
 
 func newOptions(opts ...Option) Options {
 	opt := Options{
@@ -86,9 +123,12 @@ func newOptions(opts ...Option) Options {
 func Broker(b broker.Broker) Option {
 	return func(o *Options) {
 		o.Broker = b
+		for _, f := range o.brokerOps {
+			f(b)
+		}
 		// Update Client and Server
-		o.Client.Init(client.Broker(b))
-		o.Server.Init(server.Broker(b))
+		o.onClient(initClient(client.Broker(b)))
+		o.onServer(initServer(server.Broker(b)))
 	}
 }
 
@@ -104,9 +144,14 @@ func Cmd(c cmd.Cmd) Option {
 	}
 }
 
-// Client to be used for service.
+// Client to be used for service. Service-level options given before or
+// after it (Registry, Broker, Transport, Selector, WrapCall, WrapClient,
+// ...) apply to it.
 func Client(c client.Client) Option {
 	return func(o *Options) {
+		for _, f := range o.clientOps {
+			c = f(c)
+		}
 		o.Client = c
 	}
 }
@@ -122,9 +167,7 @@ func Context(ctx context.Context) Option {
 // Handle will register a handler without any fuss
 func Handle(v interface{}) Option {
 	return func(o *Options) {
-		o.Server.Handle(
-			o.Server.NewHandler(v),
-		)
+		o.onServer(func(s server.Server) { _ = s.Handle(s.NewHandler(v)) })
 	}
 }
 
@@ -144,9 +187,15 @@ func Profile(p profile.Profile) Option {
 	}
 }
 
-// Server to be used for service.
+// Server to be used for service. Service-level options given before or
+// after it (Name, Version, Address, Registry, Broker, Transport, Handle,
+// WrapHandler, ...) apply to it, and take precedence over the server's
+// own settings for the same things.
 func Server(s server.Server) Option {
 	return func(o *Options) {
+		for _, f := range o.serverOps {
+			f(s)
+		}
 		o.Server = s
 	}
 }
@@ -171,17 +220,17 @@ func Registry(r registry.Registry) Option {
 	return func(o *Options) {
 		o.Registry = r
 		// Update Client and Server
-		o.Client.Init(client.Registry(r))
-		o.Server.Init(server.Registry(r))
+		o.onClient(initClient(client.Registry(r)))
+		o.onServer(initServer(server.Registry(r)))
 		// Update Broker
-		o.Broker.Init(broker.Registry(r))
+		o.onBroker(func(b broker.Broker) { _ = b.Init(broker.Registry(r)) })
 	}
 }
 
 // Tracer sets the tracer for the service.
 func Tracer(t trace.Tracer) Option {
 	return func(o *Options) {
-		o.Server.Init(server.Tracer(t))
+		o.onServer(initServer(server.Tracer(t)))
 	}
 
 }
@@ -203,7 +252,7 @@ func Config(c config.Config) Option {
 // Selector sets the selector for the service client.
 func Selector(s selector.Selector) Option {
 	return func(o *Options) {
-		o.Client.Init(client.Selector(s))
+		o.onClient(initClient(client.Selector(s)))
 	}
 }
 
@@ -213,8 +262,8 @@ func Transport(t transport.Transport) Option {
 	return func(o *Options) {
 		o.Transport = t
 		// Update Client and Server
-		o.Client.Init(client.Transport(t))
-		o.Server.Init(server.Transport(t))
+		o.onClient(initClient(client.Transport(t)))
+		o.onServer(initServer(server.Transport(t)))
 	}
 }
 
@@ -223,28 +272,28 @@ func Transport(t transport.Transport) Option {
 // Address sets the address of the server.
 func Address(addr string) Option {
 	return func(o *Options) {
-		o.Server.Init(server.Address(addr))
+		o.onServer(initServer(server.Address(addr)))
 	}
 }
 
 // Name of the service.
 func Name(n string) Option {
 	return func(o *Options) {
-		o.Server.Init(server.Name(n))
+		o.onServer(initServer(server.Name(n)))
 	}
 }
 
 // Version of the service.
 func Version(v string) Option {
 	return func(o *Options) {
-		o.Server.Init(server.Version(v))
+		o.onServer(initServer(server.Version(v)))
 	}
 }
 
 // Metadata associated with the service.
 func Metadata(md map[string]string) Option {
 	return func(o *Options) {
-		o.Server.Init(server.Metadata(md))
+		o.onServer(initServer(server.Metadata(md)))
 	}
 }
 
@@ -265,14 +314,14 @@ func Action(a func(*cli.Context) error) Option {
 // RegisterTTL specifies the TTL to use when registering the service.
 func RegisterTTL(t time.Duration) Option {
 	return func(o *Options) {
-		o.Server.Init(server.RegisterTTL(t))
+		o.onServer(initServer(server.RegisterTTL(t)))
 	}
 }
 
 // RegisterInterval specifies the interval on which to re-register.
 func RegisterInterval(t time.Duration) Option {
 	return func(o *Options) {
-		o.Server.Init(server.RegisterInterval(t))
+		o.onServer(initServer(server.RegisterInterval(t)))
 	}
 }
 
@@ -281,17 +330,20 @@ func RegisterInterval(t time.Duration) Option {
 // Wrappers are applied in reverse order so the last is executed first.
 func WrapClient(w ...client.Wrapper) Option {
 	return func(o *Options) {
-		// apply in reverse
-		for i := len(w); i > 0; i-- {
-			o.Client = w[i-1](o.Client)
-		}
+		o.onClient(func(c client.Client) client.Client {
+			// apply in reverse
+			for i := len(w); i > 0; i-- {
+				c = w[i-1](c)
+			}
+			return c
+		})
 	}
 }
 
 // WrapCall is a convenience method for wrapping a Client CallFunc.
 func WrapCall(w ...client.CallWrapper) Option {
 	return func(o *Options) {
-		o.Client.Init(client.WrapCall(w...))
+		o.onClient(initClient(client.WrapCall(w...)))
 	}
 }
 
@@ -305,7 +357,7 @@ func WrapHandler(w ...server.HandlerWrapper) Option {
 		}
 
 		// Init once
-		o.Server.Init(wrappers...)
+		o.onServer(initServer(wrappers...))
 	}
 }
 
@@ -319,14 +371,14 @@ func WrapSubscriber(w ...server.SubscriberWrapper) Option {
 		}
 
 		// Init once
-		o.Server.Init(wrappers...)
+		o.onServer(initServer(wrappers...))
 	}
 }
 
 // Add opt to server option.
 func AddListenOption(option server.Option) Option {
 	return func(o *Options) {
-		o.Server.Init(option)
+		o.onServer(initServer(option))
 	}
 }
 

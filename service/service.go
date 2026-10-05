@@ -168,9 +168,14 @@ func (s *serviceImpl) Stop() error {
 }
 
 func (s *serviceImpl) Handle(v interface{}, opts ...server.HandlerOption) error {
-	return s.opts.Server.Handle(
-		s.opts.Server.NewHandler(v, opts...),
-	)
+	if err := s.opts.Server.Handle(s.opts.Server.NewHandler(v, opts...)); err != nil {
+		return err
+	}
+	// a server set later with Init(Server(...)) gets the handler too
+	s.opts.serverOps = append(s.opts.serverOps, func(srv server.Server) {
+		_ = srv.Handle(srv.NewHandler(v, opts...))
+	})
+	return nil
 }
 
 func (s *serviceImpl) Run() (err error) {

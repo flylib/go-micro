@@ -88,7 +88,7 @@ The header keys are standardized in the `transport/headers` package (`Micro-Serv
 
 ### Functional options
 
-Configuration everywhere uses the functional-options pattern: `Option func(*Options)`. Options hold pointers to the pluggable pieces so they can be swapped at runtime, and setting a top-level option (e.g. `Registry`) cascades down to the client, server, and broker so the components stay consistent.
+Configuration everywhere uses the functional-options pattern: `Option func(*Options)`. Options hold pointers to the pluggable pieces so they can be swapped at runtime, and setting a top-level option (e.g. `Registry`) cascades down to the client, server, and broker so the components stay consistent. The order of options does not matter: a server, client or broker passed with `micro.Server`, `micro.Client` or `micro.Broker` gets the service-level settings given before it, such as the name, registry, broker, wrappers and handlers.
 
 ```go
 service := micro.New("greeter",
