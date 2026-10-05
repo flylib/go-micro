@@ -9,6 +9,7 @@ Priorities come from the teams that build on this fork: services on gRPC, regist
   - An HTTP/JSON entry and REST transcoding from `google.api.http` annotations.
   - JWT claims forwarded to services as metadata.
   - [protoc-gen-micro-gateway](cmd/protoc-gen-micro-gateway) generates the gateway rules.
+  - A WebSocket entry with calls, streams, topic subscriptions and pushes to users (`gateway/push` over NATS). OpenResty forwards it to the Go gateway.
 - **Backends.**
   - A Nacos registry and Nacos config source.
   - `store/redis` and `sync/redis` for Redis, Dragonfly and Valkey.
@@ -20,7 +21,6 @@ Priorities come from the teams that build on this fork: services on gRPC, regist
 
 ## Next
 
-- [ ] **WebSocket bridge.** Long-lived client connections at the gateway that carry RPC calls and server pushes to and from services.
 - [ ] **Gateway deployment.** Kubernetes manifests or Helm charts for both gateways, and Prometheus metrics for the gateway.
 
 ## Under discussion

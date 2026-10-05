@@ -8,10 +8,13 @@ Edge gateways that take gRPC calls from outside the cluster and route them to go
 | [rules.schema.json](rules.schema.json), [rules.example.yaml](rules.example.yaml) | The rules format shared by both gateways |
 | [proxy/](proxy) | Go gateway, built on go-micro's registry, selector and config sources |
 | [openresty/](openresty) | OpenResty gateway with go-micro adapter Lua libraries |
+| [push/](push) | `push.ToUser` / `push.ToTopic`: messages from services to WebSocket clients |
 | [conformance/](conformance) | Black-box suite that every gateway must pass |
 | [api/](api) | HTTP server shell used by `micro run` and `micro server` for the dashboard. It is not an edge gateway. |
 
 **HTTP clients.** Both gateways can also serve an HTTP/JSON entry. It accepts `POST /api/<service>/<Handler>/<Method>` and REST endpoints transcoded from `google.api.http` annotations (SPEC §2.1, §2.2). [protoc-gen-micro-gateway](../cmd/protoc-gen-micro-gateway) generates the rules from your protos.
+
+**Long-lived connections.** The WebSocket entry `/ws` carries calls, streams, topic subscriptions and pushes to a user over one connection (SPEC §2.3). Services push with [`gateway/push`](push) over NATS. The Go gateway serves it, and OpenResty forwards `/ws` to a Go gateway.
 
 ### Exposing a service over REST
 

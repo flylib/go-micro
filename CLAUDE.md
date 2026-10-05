@@ -42,8 +42,9 @@ go-micro/
 ├── events/         # Event streams (memory; NATS JetStream module)
 ├── gateway/
 │   ├── SPEC.md, rules.schema.json   # edge gateway contract and rules format
-│   ├── proxy/      # Go edge gateway (gRPC + HTTP/JSON + REST transcoding)
-│   ├── openresty/  # OpenResty edge gateway with go-micro adapter Lua libraries
+│   ├── proxy/      # Go edge gateway (gRPC + HTTP/JSON + REST transcoding + WebSocket)
+│   ├── openresty/  # OpenResty edge gateway with go-micro adapter Lua libraries (forwards /ws to the Go gateway)
+│   ├── push/       # push.ToUser / push.ToTopic for WebSocket clients (core module)
 │   ├── conformance/# black-box suite both gateways must pass
 │   └── api/        # HTTP shell used by `micro run` / `micro server` dashboards
 ├── health/         # Health checking
