@@ -4,13 +4,13 @@ go 1.26.0
 
 require (
 	github.com/coder/websocket v1.8.15
-	github.com/flylib/go-micro v0.0.0-20261005032823-771d2b07a7e2
-	github.com/flylib/go-micro/auth/jwt v0.0.0-20261005032823-771d2b07a7e2
-	github.com/flylib/go-micro/broker/nats v0.0.0-20261005032823-771d2b07a7e2
-	github.com/flylib/go-micro/registry/consul v0.0.0-20261005032823-771d2b07a7e2
-	github.com/flylib/go-micro/registry/etcd v0.0.0-20261005032823-771d2b07a7e2
-	github.com/flylib/go-micro/registry/nacos v0.0.0-20261005032823-771d2b07a7e2
-	github.com/flylib/go-micro/server/grpc v0.0.0-20261005032823-771d2b07a7e2
+	github.com/flylib/go-micro v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro/auth/jwt v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro/broker/nats v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro/registry/consul v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro/registry/etcd v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro/registry/nacos v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro/server/grpc v0.0.0-20261005053906-fea526f1d910
 	github.com/hashicorp/consul/api v1.32.1
 	github.com/nacos-group/nacos-sdk-go/v2 v2.3.5
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
