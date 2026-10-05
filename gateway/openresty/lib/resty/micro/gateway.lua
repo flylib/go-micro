@@ -188,8 +188,11 @@ local function rule_set()
     return current
 end
 
-local function access()
-    local path = ngx.var.request_uri
+-- route runs everything both entries share before nginx picks a node:
+-- path check, route match (SPEC 3), plugins (SPEC 9.4), discovery and
+-- candidate order (SPEC 4, 5), upstream headers (SPEC 7). It leaves the
+-- candidates in ngx.ctx.micro for balance(), or returns an error.
+local function route(path)
     ngx.var.micro_method = path
 
     local derived, endpoint = rules.split(path)
@@ -243,12 +246,16 @@ local function access()
     ngx.ctx.micro = {
         candidates = candidates,
         route = rt,
+        service = service,
         p2c = rt.selector.strategy == "p2c" and not rt.selector.version_weights,
+        tried = {},
     }
 end
 
+_M.route = route
+
 function _M.access()
-    local err = access()
+    local err = route(ngx.var.request_uri)
     if err then
         return errors.respond(err)
     end
@@ -274,6 +281,10 @@ function _M.balance()
     end
     if m.p2c then
         selector.p2c_begin(n.address)
+        -- kept twice: the variable survives error_page redirects (which
+        -- reset ngx.ctx), the ctx list survives the HTTP entry's
+        -- subrequest (which has its own variables)
+        m.tried[#m.tried + 1] = n.address
         ngx.var.micro_p2c = (ngx.var.micro_p2c ~= "" and (ngx.var.micro_p2c .. ",") or "") .. n.address
     end
     local ok, err = balancer.set_current_peer(n.host, n.port)
@@ -300,20 +311,25 @@ function _M.log()
         ngx.var.micro_trace_id = trace
     end
 
+    local addrs, last = {}, nil
     local tried = ngx.var.micro_p2c
-    if not tried or tried == "" then
-        return
-    end
-    local times = {}
-    for t in (ngx.var.upstream_response_time or ""):gmatch("[^,%s:]+") do
-        times[#times + 1] = tonumber(t)
-    end
-    local addrs = {}
-    for a in tried:gmatch("[^,]+") do
-        addrs[#addrs + 1] = a
+    if tried and tried ~= "" then
+        for a in tried:gmatch("[^,]+") do
+            addrs[#addrs + 1] = a
+        end
+        for t in (ngx.var.upstream_response_time or ""):gmatch("[^,%s:]+") do
+            last = tonumber(t)
+        end
+    else
+        -- HTTP entry: the upstream ran in a subrequest
+        local m = ngx.ctx.micro
+        if not m or not m.tried or #m.tried == 0 then
+            return
+        end
+        addrs, last = m.tried, m.rt
     end
     for i, a in ipairs(addrs) do
-        selector.p2c_end(a, i == #addrs and times[#times] or nil)
+        selector.p2c_end(a, i == #addrs and last or nil)
     end
 end
 

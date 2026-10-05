@@ -19,7 +19,7 @@ The two implementations differ in how they are built:
 | Rules source | go-micro `config/source` (etcd, consul, nacos); files polled | Lua readers of the same sources |
 | Plugins | Go, in `gateway/proxy` | Lua |
 | Extension | Go code (compiled in) | Lua (hot-loadable) |
-| HTTP/JSON entry (§2.1, optional) | `net/http` + chi (HTTP/1.1 and h2c), or fasthttp (HTTP/1.1) | Not yet |
+| HTTP/JSON entry (§2.1, optional) | `net/http` + chi (HTTP/1.1 and h2c), or fasthttp (HTTP/1.1) | nginx server with Lua access/header/body filters around `grpc_pass` (HTTP/1.1 and h2c) |
 
 Out of scope for v1 (§13): field-mapped REST transcoding, distributed rate limiting, the mdns registry.
 

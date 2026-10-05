@@ -16,9 +16,21 @@ resolver=$(awk '/^nameserver/ { print $2; exit }' /etc/resolv.conf 2>/dev/null |
 scheme=grpc
 [ "${MICRO_GATEWAY_UPSTREAM_TLS:-false}" = "true" ] && scheme=grpcs
 
+# optional HTTP/JSON entry (SPEC 2.1): drop its server block when unset
+http_listen=""
+case "${MICRO_GATEWAY_HTTP_ADDRESS:-}" in
+  "") ;;
+  :*) http_listen="${MICRO_GATEWAY_HTTP_ADDRESS#:}" ;;
+  *) http_listen="$MICRO_GATEWAY_HTTP_ADDRESS" ;;
+esac
+http_block=""
+[ -n "$http_listen" ] || http_block='/# BEGIN HTTP\/JSON entry/,/# END HTTP\/JSON entry/d'
+
 sed -e "s|__LISTEN__|$listen|" \
+    -e "s|__HTTP_LISTEN__|$http_listen|" \
     -e "s|__RESOLVER__|$resolver|" \
     -e "s|__SCHEME__|$scheme|" \
+    ${http_block:+-e "$http_block"} \
     /opt/micro/conf/nginx.conf.tmpl > /opt/micro/conf/nginx.conf
 
 # Not exec'd: when the rules cannot be loaded at start-up a worker stops

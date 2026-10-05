@@ -2,6 +2,8 @@
 #   __LISTEN__    from MICRO_GATEWAY_ADDRESS (default 8080)
 #   __RESOLVER__  the container's nameserver, for registry host names
 #   __SCHEME__    grpcs when MICRO_GATEWAY_UPSTREAM_TLS=true, else grpc
+#   __HTTP_LISTEN__  from MICRO_GATEWAY_HTTP_ADDRESS; without it the
+#                    "HTTP/JSON entry" block is removed
 
 worker_processes auto;
 worker_rlimit_nofile 65535;
@@ -114,4 +116,54 @@ http {
             content_by_lua_block { require("resty.micro.gateway").upstream_error(500) }
         }
     }
+
+    # BEGIN HTTP/JSON entry (SPEC 2.1)
+    server {
+        listen __HTTP_LISTEN__;
+        http2 on; # HTTP/1.1 and h2c
+        access_log /dev/stdout micro;
+        client_max_body_size 4m;
+        client_body_buffer_size 4m; # keep bodies in memory
+
+        set $micro_method "";
+        set $micro_service "";
+        set $micro_route "";
+        set $micro_client_ip "";
+        set $micro_trace "";
+        set $micro_trace_id "";
+        set $micro_code "";
+        set $micro_p2c "";
+        set $micro_grpc_status "";
+        set $micro_grpc_message "";
+
+        log_by_lua_block {
+            require("resty.micro.gateway").log()
+        }
+
+        location / {
+            # route like a gRPC call, then proxy it with grpc_pass here
+            access_by_lua_block { require("resty.micro.http").access() }
+            grpc_pass __SCHEME__://micro_nodes;
+            grpc_next_upstream error timeout;
+            header_filter_by_lua_block { require("resty.micro.http").header_filter() }
+            body_filter_by_lua_block { require("resty.micro.http").body_filter() }
+            error_page 413 = @micro_http_413;
+            error_page 502 = @micro_http_502;
+            error_page 504 = @micro_http_504;
+            error_page 500 = @micro_http_500;
+        }
+        location @micro_http_413 {
+            content_by_lua_block { require("resty.micro.http").too_large() }
+        }
+        location @micro_http_502 {
+            content_by_lua_block { require("resty.micro.http").upstream_error(502) }
+        }
+        location @micro_http_504 {
+            content_by_lua_block { require("resty.micro.http").upstream_error(504) }
+        }
+        location @micro_http_500 {
+            content_by_lua_block { require("resty.micro.http").upstream_error(500) }
+        }
+    }
+    # END HTTP/JSON entry
 }

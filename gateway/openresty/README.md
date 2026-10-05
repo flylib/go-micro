@@ -27,8 +27,27 @@ Bootstrap settings ([SPEC.md §11](../SPEC.md#11-bootstrap)) are the same as the
 | `MICRO_GATEWAY_RULES` | — | `file://`, `etcd://`, `consul://` or `nacos://`, or `none` |
 | `MICRO_GATEWAY_TRUSTED_PROXIES` | — | CIDRs whose `x-forwarded-for` is trusted |
 | `MICRO_GATEWAY_UPSTREAM_TLS` | `false` | Dial nodes with TLS (`grpcs://`) |
+| `MICRO_GATEWAY_HTTP_ADDRESS` | — | HTTP/JSON entry address (SPEC §2.1); empty removes that server |
 
 **Behaviour on bad rules.** A missing or invalid rules document stops the gateway, and the container exits with code 1. A later invalid update is logged and the previous rules stay.
+
+## HTTP/JSON entry
+
+With `MICRO_GATEWAY_HTTP_ADDRESS` set, a second nginx server accepts plain HTTP calls. It serves HTTP/1.1 and h2c ([SPEC.md §2.1](../SPEC.md#21-httpjson-entry-optional)):
+
+```bash
+curl -X POST localhost:8090/api/greeter/Greeter/Hello -d '{"name":"gopher"}'
+```
+
+The call is proxied by `grpc_pass` in the HTTP request itself, so it gets the same balancer, retries and timeouts as a gRPC call. `resty.micro.http` handles three phases:
+
+- **access** checks the request and routes it with the gRPC entry's code (rules, plugins, discovery). It then wraps the JSON body in a gRPC frame, points the URI at `/<service>.<Handler>/<Method>` and sets `application/grpc+json`.
+- **header filter** sets the HTTP status. go-micro errors arrive trailers-only, so their gRPC status is already in the headers. It becomes the HTTP status, and the go-micro error becomes the body.
+- **body filter** unwraps the reply frame into the JSON body.
+
+**Why not a subrequest.** `ngx.location.capture` to a `grpc_pass` location crashes nginx workers (signal 11), so the reply cannot be buffered through a subrequest.
+
+**One consequence.** The HTTP status is fixed when the headers pass. A reply that sends a message and then a non-OK status keeps 200, with an error in the body. go-micro unary handlers either reply or fail trailers-only, never both.
 
 ## Layout
 
@@ -41,6 +60,7 @@ lib/resty/micro/
   selector.lua   eligibility, filters, roundrobin/random/weighted/version_weights/p2c
   plugins.lua    ip-restriction, jwt-auth (RS256, auth/jwt tokens), rate-limit
   headers.lua    reserved headers, x-forwarded-for, traceparent, client IP
+  http.lua       HTTP/JSON entry: access, header and body filters
   errors.lua     go-micro shaped gateway errors as gRPC statuses
   source.lua     rules sources
   ip.lua         CIDR matching
