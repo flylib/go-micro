@@ -74,6 +74,13 @@ func configure(r *nacosRegistry, opts ...registry.Option) error {
 	if r.namespace != "" && cc.NamespaceId == "" {
 		cc.NamespaceId = r.namespace
 	}
+	var grpcPort uint64
+	if r.opts.Context != nil {
+		if c, ok := r.opts.Context.Value(authKey{}).(credentials); ok {
+			cc.Username, cc.Password = c.username, c.password
+		}
+		grpcPort, _ = r.opts.Context.Value(grpcPortKey{}).(uint64)
+	}
 
 	var scs []constant.ServerConfig
 	if r.opts.Context != nil {
@@ -94,7 +101,7 @@ func configure(r *nacosRegistry, opts ...registry.Option) error {
 			} else if p, perr := strconv.ParseUint(portStr, 10, 64); perr == nil {
 				port = p
 			}
-			scs = append(scs, constant.ServerConfig{IpAddr: host, Port: port})
+			scs = append(scs, constant.ServerConfig{IpAddr: host, Port: port, GrpcPort: grpcPort})
 		}
 	}
 

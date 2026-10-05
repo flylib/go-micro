@@ -38,6 +38,8 @@ func NewSource(opts ...source.Option) source.Source {
 
 	var addrs []string
 	var namespace string
+	var creds credentials
+	var grpcPort uint64
 	if options.Context != nil {
 		if v, ok := options.Context.Value(addressKey{}).([]string); ok {
 			addrs = v
@@ -54,6 +56,8 @@ func NewSource(opts ...source.Option) source.Source {
 		if v, ok := options.Context.Value(formatKey{}).(string); ok {
 			s.format = v
 		}
+		creds, _ = options.Context.Value(authKey{}).(credentials)
+		grpcPort, _ = options.Context.Value(grpcPortKey{}).(uint64)
 	}
 	if len(addrs) == 0 {
 		addrs = []string{"127.0.0.1:8848"}
@@ -68,9 +72,10 @@ func NewSource(opts ...source.Option) source.Source {
 		} else if p, perr := strconv.ParseUint(portStr, 10, 64); perr == nil {
 			port = p
 		}
-		scs = append(scs, constant.ServerConfig{IpAddr: host, Port: port})
+		scs = append(scs, constant.ServerConfig{IpAddr: host, Port: port, GrpcPort: grpcPort})
 	}
-	cc := constant.ClientConfig{NamespaceId: namespace, TimeoutMs: 5000, NotLoadCacheAtStart: true, LogLevel: "warn"}
+	cc := constant.ClientConfig{NamespaceId: namespace, TimeoutMs: 5000, NotLoadCacheAtStart: true, LogLevel: "warn",
+		Username: creds.username, Password: creds.password}
 	client, err := clients.NewConfigClient(vo.NacosClientParam{ClientConfig: &cc, ServerConfigs: scs})
 	if err == nil {
 		s.client = client
@@ -151,6 +156,10 @@ type dataIdKey struct{}
 type groupKey struct{}
 type namespaceKey struct{}
 type formatKey struct{}
+type authKey struct{}
+type grpcPortKey struct{}
+
+type credentials struct{ username, password string }
 
 func set(k, v interface{}) source.Option {
 	return func(o *source.Options) {
@@ -175,3 +184,12 @@ func WithNamespaceId(ns string) source.Option { return set(namespaceKey{}, ns) }
 
 // WithFormat sets the config format hint (default yaml).
 func WithFormat(f string) source.Option { return set(formatKey{}, f) }
+
+// WithAuth sets the username and password for a Nacos server with
+// authentication on (the default since Nacos 3.0).
+func WithAuth(username, password string) source.Option {
+	return set(authKey{}, credentials{username, password})
+}
+
+// WithGRPCPort sets the Nacos gRPC port (default: the HTTP port + 1000).
+func WithGRPCPort(port uint64) source.Option { return set(grpcPortKey{}, port) }

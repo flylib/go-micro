@@ -14,6 +14,10 @@ type clientConfigKey struct{}
 type serverConfigsKey struct{}
 type groupNameKey struct{}
 type namespaceKey struct{}
+type authKey struct{}
+type grpcPortKey struct{}
+
+type credentials struct{ username, password string }
 
 func setCtx(o *registry.Options, k, v interface{}) {
 	if o.Context == nil {
@@ -49,4 +53,18 @@ func WithGroupName(name string) registry.Option {
 // (default: public).
 func WithNamespaceId(ns string) registry.Option {
 	return func(o *registry.Options) { setCtx(o, namespaceKey{}, ns) }
+}
+
+// WithAuth sets the username and password for a Nacos server with
+// authentication on (the default since Nacos 3.0). The SDK logs in and
+// refreshes its token itself.
+func WithAuth(username, password string) registry.Option {
+	return func(o *registry.Options) { setCtx(o, authKey{}, credentials{username, password}) }
+}
+
+// WithGRPCPort sets the Nacos gRPC port of the servers given by
+// registry.Addrs. By default it is the HTTP port + 1000 (9848 for 8848);
+// set it when a port mapping breaks that offset.
+func WithGRPCPort(port uint64) registry.Option {
+	return func(o *registry.Options) { setCtx(o, grpcPortKey{}, port) }
 }
