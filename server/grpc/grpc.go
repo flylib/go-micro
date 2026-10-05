@@ -907,14 +907,16 @@ func (g *grpcServer) Start() error {
 	g.opts.Address = ts.Addr().String()
 	g.Unlock()
 
-	// only connect if we're subscribed
-	if len(g.subscribers) > 0 {
-		// connect to the broker
-		if err := config.Broker.Connect(); err != nil {
-			log.Logf(logger.ErrorLevel, "Broker [%s] connect error: %v", config.Broker.String(), err)
+	// connect to the broker, as the RPC server does: services that only
+	// publish (gateway/push, micro.NewEvent) need it as much as
+	// subscribers. Without subscribers a broker that cannot be reached
+	// does not stop the server; publishing then reports the error.
+	if err := config.Broker.Connect(); err != nil {
+		log.Logf(logger.ErrorLevel, "Broker [%s] connect error: %v", config.Broker.String(), err)
+		if len(g.subscribers) > 0 {
 			return err
 		}
-
+	} else {
 		log.Logf(logger.InfoLevel, "Broker [%s] Connected to %s", config.Broker.String(), config.Broker.Address())
 	}
 

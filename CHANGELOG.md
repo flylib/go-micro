@@ -26,6 +26,9 @@ calendar-based versions (YYYY.MM) for the AI-native era.
 - **Go 1.26 everywhere** — every module and `go.work` now declare `go 1.26.0` (was a mix of 1.24, 1.25 and 1.26), and CI reads the version from `go.mod`. The floor comes from dependencies: etcd client v3.7 requires Go 1.26. `registry/etcd` and `gateway/conformance` move to etcd client v3.7.0 (and grpc v1.81), like the other etcd modules.
 - **`micro new` and `micro build`** — generated `go.mod` and Dockerfiles target Go 1.26.
 
+### Fixed
+- **Publish-only gRPC services had no broker** — `server/grpc` connected the broker only when the service had subscribers, so a service that only published (for example with `gateway/push`) failed every publish with `not connected`. It now connects on start like the RPC server. Without subscribers, a broker that cannot be reached is logged and does not stop the service. `push.Pusher` also connects its broker before the first push.
+
 ### Removed
 - **AI layer (v5.30.0)** — agents, LLM providers (`ai/`), flows, the MCP and A2A gateways, x402 payments, the `micro chat` / `micro flow` / `micro mcp` commands and the Python SDKs in `contrib/`. The upstream docs site and blog (`internal/website/`), the AI design documents (`internal/docs/`) and the MCP deployment example are gone too. `micro new` no longer generates MCP sections, and the dashboard no longer links to the agent playground.
 

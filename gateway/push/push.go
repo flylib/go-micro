@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/flylib/go-micro/broker"
 )
@@ -66,12 +67,30 @@ func escape(s string) string {
 // Pusher publishes pushes on a broker.
 type Pusher struct {
 	broker broker.Broker
+
+	mu        sync.Mutex
+	connected bool
 }
 
 // New returns a Pusher on b, which must be the broker the gateways
-// subscribe to. The broker must be connected.
+// subscribe to. The Pusher connects the broker before its first push if
+// nothing has yet (every broker's Connect is a no-op when connected).
 func New(b broker.Broker) *Pusher {
 	return &Pusher{broker: b}
+}
+
+// connect connects the broker once; a failure is retried on the next push.
+func (p *Pusher) connect() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.connected {
+		return nil
+	}
+	if err := p.broker.Connect(); err != nil {
+		return fmt.Errorf("push: connect broker %s: %w", p.broker, err)
+	}
+	p.connected = true
+	return nil
 }
 
 // ToUser sends msg to every WebSocket connection of account.
@@ -93,6 +112,9 @@ func (p *Pusher) ToTopic(ctx context.Context, topic string, msg any) error {
 func (p *Pusher) publish(ctx context.Context, topic string, msg any) error {
 	body, err := encode(msg)
 	if err != nil {
+		return err
+	}
+	if err := p.connect(); err != nil {
 		return err
 	}
 	m := &broker.Message{Header: map[string]string{"Content-Type": "application/json"}, Body: body}
@@ -122,6 +144,8 @@ func encode(msg any) ([]byte, error) {
 }
 
 // ToUser sends msg to account's connections through broker.DefaultBroker.
+// Services usually configure their own broker (NATS): prefer
+// New(svc.Options().Broker).
 func ToUser(ctx context.Context, account string, msg any) error {
 	return New(broker.DefaultBroker).ToUser(ctx, account, msg)
 }

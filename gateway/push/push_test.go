@@ -68,3 +68,12 @@ func TestPublish(t *testing.T) {
 		t.Fatal("non-JSON bytes accepted")
 	}
 }
+
+// A Pusher connects a broker nothing has connected yet (a service with
+// no subscribers on the gRPC server used to leave it unconnected).
+func TestPublishConnectsBroker(t *testing.T) {
+	b := broker.NewMemoryBroker() // not connected
+	if err := New(b).ToUser(context.Background(), "u1", "hi"); err != nil {
+		t.Fatalf("push on an unconnected broker: %v", err)
+	}
+}
