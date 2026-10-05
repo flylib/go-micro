@@ -29,6 +29,7 @@ type call struct {
 	clientIP string
 	account  string // set by jwt-auth
 	trace    string // effective traceparent, for the access log
+	entry    string // "grpc" or "http"
 }
 
 // plugin checks a call; a non-nil error is a gateway error that ends it.

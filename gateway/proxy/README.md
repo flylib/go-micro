@@ -18,6 +18,8 @@ It is configured by the bootstrap settings of [SPEC.md §11](../SPEC.md#11-boots
 | Variable | Default | Meaning |
 |---|---|---|
 | `MICRO_GATEWAY_ADDRESS` | `:8080` | Listen address (h2c) |
+| `MICRO_GATEWAY_HTTP_ADDRESS` | — | HTTP/JSON entry address; empty disables it |
+| `MICRO_GATEWAY_HTTP_SERVER` | `nethttp` | `nethttp` (net/http + chi: HTTP/1.1 and h2c) or `fasthttp` (HTTP/1.1 only) |
 | `MICRO_REGISTRY` | — | `etcd`, `consul` or `nacos` |
 | `MICRO_REGISTRY_ADDRESS` | — | Comma-separated `host:port` list |
 | `MICRO_REGISTRY_NAMESPACE`, `MICRO_REGISTRY_GROUP` | public, `DEFAULT_GROUP` | Nacos namespace and group |
@@ -28,6 +30,21 @@ It is configured by the bootstrap settings of [SPEC.md §11](../SPEC.md#11-boots
 **Behaviour on bad rules.** If the rules document is missing or invalid at start-up, the gateway refuses to start. If a later update is invalid, the gateway logs the error and keeps the previous rules.
 
 **Streams.** Services are reached at `/<service>.<Handler>/<Method>`, the path go-micro's own gRPC client uses. All four RPC types are forwarded.
+
+## HTTP/JSON entry
+
+With `MICRO_GATEWAY_HTTP_ADDRESS` set, the gateway also accepts plain HTTP calls ([SPEC.md §2.1](../SPEC.md#21-httpjson-entry-optional)). It is built on `net/http` and [chi](https://github.com/go-chi/chi), and serves HTTP/1.1 and h2c on one address.
+
+```bash
+curl -X POST localhost:8090/api/greeter/Greeter/Hello -d '{"name":"gopher"}'
+```
+
+- **Mapping.** `POST /api/<service>/<Handler>/<Method>` becomes the gRPC call `/<service>.<Handler>/<Method>`. It then follows the same routes, plugins, discovery and retries as a gRPC call.
+- **Body.** The JSON body is forwarded as one `application/grpc+json` message. go-micro's gRPC server decodes it with `protojson`, so no `.proto` files are needed.
+- **Errors.** Errors come back as go-micro JSON errors, with the HTTP status taken from the error's `code`.
+- **Unary only.** The entry carries unary calls.
+- **Embedding.** `gw.HTTPHandler()` returns the entry as an `http.Handler`, so it can be mounted in an existing server.
+- **fasthttp.** `MICRO_GATEWAY_HTTP_SERVER=fasthttp` (`gw.ServeAPIFast`) serves the same entry on fasthttp, HTTP/1.1 only. In our benchmarks it was not faster than net/http: the gateway's cost is in the gRPC upstream call, access logging and scheduling, not in HTTP parsing. So net/http stays the default.
 
 ## As a library
 
@@ -41,7 +58,9 @@ if err != nil {
 	log.Fatal(err)
 }
 l, _ := net.Listen("tcp", ":8080")
-gw.Serve(l)
+go gw.Serve(l) // gRPC entry
+hl, _ := net.Listen("tcp", ":8090")
+gw.ServeAPI(hl) // optional HTTP/JSON entry
 ```
 
 ## Design

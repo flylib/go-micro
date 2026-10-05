@@ -2,6 +2,8 @@
 // configured by the bootstrap settings of gateway/SPEC.md section 11:
 //
 //	MICRO_GATEWAY_ADDRESS          listen address (default :8080)
+//	MICRO_GATEWAY_HTTP_ADDRESS     HTTP/JSON entry listen address (empty: disabled)
+//	MICRO_GATEWAY_HTTP_SERVER      nethttp (default; HTTP/1.1 + h2c) or fasthttp (HTTP/1.1)
 //	MICRO_REGISTRY                 etcd | consul | nacos
 //	MICRO_REGISTRY_ADDRESS         comma-separated host:port
 //	MICRO_REGISTRY_NAMESPACE       nacos namespace
@@ -80,6 +82,14 @@ func run() error {
 		return err
 	}
 
+	// the HTTP/JSON entry is optional (SPEC 2.1)
+	var hl net.Listener
+	if haddr := os.Getenv("MICRO_GATEWAY_HTTP_ADDRESS"); haddr != "" {
+		if hl, err = net.Listen("tcp", haddr); err != nil {
+			return err
+		}
+	}
+
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -87,8 +97,28 @@ func run() error {
 		gw.Stop()
 	}()
 
+	errc := make(chan error, 2)
+	if hl != nil {
+		serve := gw.ServeAPI // net/http + chi: HTTP/1.1 and h2c
+		kind := os.Getenv("MICRO_GATEWAY_HTTP_SERVER")
+		switch kind {
+		case "", "nethttp":
+			kind = "nethttp"
+		case "fasthttp":
+			serve = gw.ServeAPIFast // HTTP/1.1 only
+		default:
+			return fmt.Errorf("MICRO_GATEWAY_HTTP_SERVER must be nethttp or fasthttp, got %q", kind)
+		}
+		logger.Logf(logger.InfoLevel, "micro-gateway HTTP/JSON entry (%s) listening on %s", kind, hl.Addr())
+		go func() { errc <- serve(hl) }()
+	}
 	logger.Logf(logger.InfoLevel, "micro-gateway listening on %s (registry %s, rules %s)", l.Addr(), reg, rules)
-	return gw.Serve(l)
+	go func() { errc <- gw.Serve(l) }()
+
+	// either entry failing stops the gateway; Stop ends both
+	err = <-errc
+	gw.Stop()
+	return err
 }
 
 func newRegistry() (registry.Registry, error) {

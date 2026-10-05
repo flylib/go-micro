@@ -52,6 +52,10 @@ func errUpstreamTimeout(service string) error {
 	return gatewayError(codes.DeadlineExceeded, http.StatusGatewayTimeout, "upstream "+service+" timed out")
 }
 
+func gatewayErrorBadRequest(detail string) error {
+	return gatewayError(codes.InvalidArgument, http.StatusBadRequest, detail)
+}
+
 func errInternal(detail string) error {
 	return gatewayError(codes.Internal, http.StatusInternalServerError, detail)
 }

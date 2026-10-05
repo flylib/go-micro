@@ -183,10 +183,10 @@ func TestClientIP(t *testing.T) {
 	trusted := []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}
 	peer := &net.TCPAddr{IP: net.ParseIP("10.0.0.5"), Port: 1}
 	md := metadata.Pairs("x-forwarded-for", "6.6.6.6, 7.7.7.7, 10.0.0.9")
-	if got := clientIP(peer, md, trusted); got != "7.7.7.7" {
+	if got := clientIP(hostOf(peer), md, trusted); got != "7.7.7.7" {
 		t.Errorf("behind trusted proxies: %q, want 7.7.7.7", got)
 	}
-	if got := clientIP(&net.TCPAddr{IP: net.ParseIP("8.8.8.8")}, md, trusted); got != "8.8.8.8" {
+	if got := clientIP("8.8.8.8", md, trusted); got != "8.8.8.8" {
 		t.Errorf("untrusted peer's x-forwarded-for believed: %q", got)
 	}
 }

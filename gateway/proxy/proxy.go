@@ -1,7 +1,9 @@
 // Package proxy is the Go implementation of the go-micro edge gateway
 // (gateway/SPEC.md). It accepts gRPC calls, applies the rules (routing,
 // IP restriction, JWT auth, rate limits) and forwards each call, as opaque
-// frames, to a node of the target go-micro service.
+// frames, to a node of the target go-micro service. An optional HTTP/JSON
+// entry (ServeAPI, HTTPHandler; net/http + chi) maps
+// POST /api/<service>/<Handler>/<Method> onto the same calls.
 //
 // The transport is a transparent grpc-go proxy, which keeps upstream
 // statuses, headers and trailers intact and controls exactly when a call
@@ -24,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"net/netip"
 	"strings"
 	"sync"
@@ -36,6 +39,7 @@ import (
 	"github.com/flylib/go-micro/registry/cache"
 	"github.com/flylib/go-micro/selector/p2c"
 	mgrpc "github.com/flylib/go-micro/util/grpc"
+	"github.com/valyala/fasthttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -80,6 +84,10 @@ type Gateway struct {
 	conns        *conns
 	srv          *grpc.Server
 	log          logger.Logger
+
+	httpMu   sync.Mutex
+	httpSrvs []*http.Server     // HTTP/JSON entries started by ServeAPI
+	fastSrvs []*fasthttp.Server // and by ServeAPIFast
 
 	stop     chan struct{}
 	stopOnce sync.Once
@@ -145,6 +153,16 @@ func (g *Gateway) Serve(l net.Listener) error { return g.srv.Serve(l) }
 func (g *Gateway) Stop() {
 	g.stopOnce.Do(func() {
 		close(g.stop)
+		g.httpMu.Lock()
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		for _, srv := range g.httpSrvs {
+			_ = srv.Shutdown(ctx)
+		}
+		for _, srv := range g.fastSrvs {
+			_ = srv.ShutdownWithContext(ctx)
+		}
+		cancel()
+		g.httpMu.Unlock()
 		g.srv.GracefulStop()
 		g.wg.Wait()
 		g.conns.close()
@@ -239,79 +257,105 @@ func (g *Gateway) sweepConns() {
 	}
 }
 
-// handle serves every inbound call (grpc.UnknownServiceHandler).
+// handle serves every call on the gRPC entry (grpc.UnknownServiceHandler).
 func (g *Gateway) handle(_ any, in grpc.ServerStream) (err error) {
 	ctx := in.Context()
 	start := time.Now()
 	method, _ := grpc.MethodFromServerStream(in)
 	md, _ := metadata.FromIncomingContext(ctx)
 	p, _ := peer.FromContext(ctx)
-	c := &call{ctx: ctx, method: method, md: md, clientIP: clientIP(addrOf(p), md, g.opts.TrustedProxies)}
+	c := &call{ctx: ctx, entry: "grpc", method: method, md: md, clientIP: clientIP(hostOf(addrOf(p)), md, g.opts.TrustedProxies)}
 
-	var rt *route
-	var service, node string
-	defer func() { g.access(c, rt, service, node, start, err) }()
+	var pc *prepared
+	var node string
+	defer func() { g.access(c, pc, node, start, err) }()
 
-	// SPEC 3.1: malformed paths are rejected before anything else
-	if _, _, perr := mgrpc.ServiceMethod(method); perr != nil || strings.Count(method, "/") != 2 {
-		return errMalformedPath(method)
+	if pc, err = g.prepare(c); err != nil {
+		return err
 	}
-	derived := mgrpc.ServiceFromMethod(method)
+	up, cancel, done, err := g.open(ctx, pc, contentSubtype(md), &node)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	defer done()
+	return relay(in, up, cancel, pc.route, pc.service)
+}
+
+// prepared is a call that has been routed, has passed its plugins and has
+// eligible nodes: ready to be sent to one of them.
+type prepared struct {
+	method   string // gRPC method path
+	route    *route
+	service  string
+	services []*registry.Service
+	out      metadata.MD // upstream metadata
+}
+
+// prepare runs everything both entries share before a node is chosen:
+// path check, route match (SPEC 3), plugins (SPEC 9.4), discovery (SPEC 4)
+// and the upstream metadata (SPEC 7).
+func (g *Gateway) prepare(c *call) (*prepared, error) {
+	// SPEC 3.1: malformed paths are rejected before anything else
+	if _, _, perr := mgrpc.ServiceMethod(c.method); perr != nil || strings.Count(c.method, "/") != 2 {
+		return nil, errMalformedPath(c.method)
+	}
+	derived := mgrpc.ServiceFromMethod(c.method)
 
 	rs := g.rules.Load()
-	rt = rs.match(method, derived)
+	rt := rs.match(c.method, derived)
 	if rt == nil {
-		return errNoRoute(method)
+		return nil, errNoRoute(c.method)
 	}
-	service = rt.service
-	if service == "" {
-		service = derived
+	pc := &prepared{method: c.method, route: rt, service: rt.service}
+	if pc.service == "" {
+		pc.service = derived
 	}
-	if service == "" {
-		return errNoRoute(method)
+	if pc.service == "" {
+		return pc, errNoRoute(c.method)
 	}
 
 	for _, pl := range rs.global {
 		if err := pl.check(c); err != nil {
-			return err
+			return pc, err
 		}
 	}
 	for _, pl := range rt.plugins {
 		if err := pl.check(c); err != nil {
-			return err
+			return pc, err
 		}
 	}
 
-	services, gerr := g.registry.GetService(service)
+	services, gerr := g.registry.GetService(pc.service)
 	if gerr != nil && !errors.Is(gerr, registry.ErrNotFound) {
-		g.log.Logf(logger.WarnLevel, "gateway: registry lookup %s: %v", service, gerr)
+		g.log.Logf(logger.WarnLevel, "gateway: registry lookup %s: %v", pc.service, gerr)
 	}
-	services = eligible(services, rt.filters, endpointOf(method))
-	if countNodes(services) == 0 {
-		return errNoNodes(service)
+	pc.services = eligible(services, rt.filters, endpointOf(c.method))
+	if countNodes(pc.services) == 0 {
+		return pc, errNoNodes(pc.service)
 	}
 
-	out := outgoingMetadata(md, c.clientIP)
+	pc.out = outgoingMetadata(c.md, c.clientIP)
 	if rt.name != "" {
-		out.Set(hdrRoute, rt.name)
+		pc.out.Set(hdrRoute, rt.name)
 	}
 	if c.account != "" {
-		out.Set(hdrAccount, c.account)
+		pc.out.Set(hdrAccount, c.account)
 	}
-	c.trace = first(out, hdrTraceparent)
-	return g.forward(ctx, in, method, service, contentSubtype(md), rt, services, out, &node)
+	c.trace = first(pc.out, hdrTraceparent)
+	return pc, nil
 }
 
-// forward picks nodes until one accepts the call, then relays it. A node
-// is retried only while nothing has been sent to it (SPEC 6).
-func (g *Gateway) forward(ctx context.Context, in grpc.ServerStream, method, service, subtype string, rt *route,
-	services []*registry.Service, out metadata.MD, chosen *string) error {
+// open picks nodes until one accepts a stream for the call. A node is
+// retried only while nothing has been sent to it (SPEC 6). The caller
+// must call cancel and done when the call ends.
+func (g *Gateway) open(ctx context.Context, pc *prepared, subtype string, chosen *string) (
+	up grpc.ClientStream, cancel context.CancelFunc, done func(), err error) {
 
-	upCtx, cancel := context.WithCancel(metadata.NewOutgoingContext(ctx, out))
-	defer cancel()
-
+	rt := pc.route
+	upCtx, cancel := context.WithCancel(metadata.NewOutgoingContext(ctx, pc.out))
 	codec := rawCodec{name: subtype}
-	next := picker(rt, services)
+	next := picker(rt, pc.services)
 	var lastErr error
 	for attempt := 0; attempt <= rt.retries; attempt++ {
 		n := next()
@@ -327,33 +371,29 @@ func (g *Gateway) forward(ctx context.Context, in grpc.ServerStream, method, ser
 			lastErr = fmt.Errorf("%s: %w", n.Address, err)
 			continue
 		}
-		var done func()
+		done := func() {}
 		if rt.selector.Strategy == "p2c" && len(rt.selector.VersionWeights) == 0 {
 			done = p2c.Track(n.Address)
 		}
-		up, err := cc.NewStream(upCtx, &grpc.StreamDesc{ServerStreams: true, ClientStreams: true}, method, grpc.ForceCodec(codec))
+		up, err := cc.NewStream(upCtx, &grpc.StreamDesc{ServerStreams: true, ClientStreams: true}, pc.method, grpc.ForceCodec(codec))
 		if err != nil {
-			if done != nil {
-				done()
-			}
+			done()
 			// the stream never opened: nothing reached the node
 			if status.Code(err) == codes.Unavailable {
 				lastErr = fmt.Errorf("%s: %w", n.Address, err)
 				continue
 			}
-			return err
+			cancel()
+			return nil, nil, nil, err
 		}
 		*chosen = n.Address
-		err = relay(in, up, cancel, rt, service)
-		if done != nil {
-			done()
-		}
-		return err
+		return up, cancel, done, nil
 	}
+	cancel()
 	if lastErr == nil {
 		lastErr = errors.New("no node accepted the call")
 	}
-	return errUpstreamConnect(service, lastErr)
+	return nil, nil, nil, errUpstreamConnect(pc.service, lastErr)
 }
 
 // relay pumps frames both ways until the upstream finishes, then copies
@@ -464,7 +504,12 @@ func addrOf(p *peer.Peer) net.Addr {
 
 // access writes one log line per call, with the field names
 // wrapper/logging uses so gateway and service lines join on trace_id.
-func (g *Gateway) access(c *call, rt *route, service, node string, start time.Time, err error) {
+func (g *Gateway) access(c *call, pc *prepared, node string, start time.Time, err error) {
+	var rt *route
+	var service string
+	if pc != nil {
+		rt, service = pc.route, pc.service
+	}
 	code := status.Code(err)
 	level := logger.InfoLevel
 	switch code {
@@ -478,6 +523,7 @@ func (g *Gateway) access(c *call, rt *route, service, node string, start time.Ti
 		return
 	}
 	fields := map[string]interface{}{
+		"entry":     c.entry,
 		"method":    c.method,
 		"service":   service,
 		"client_ip": c.clientIP,

@@ -96,8 +96,7 @@ func newTraceparent() string {
 // clientIP is the peer address, unless the peer is a trusted proxy: then
 // it is the right-most x-forwarded-for entry that is not itself trusted
 // (SPEC 7).
-func clientIP(peer net.Addr, in metadata.MD, trusted []netip.Prefix) string {
-	ip := hostOf(peer)
+func clientIP(ip string, in metadata.MD, trusted []netip.Prefix) string {
 	if !isTrusted(ip, trusted) {
 		return ip
 	}
