@@ -74,7 +74,7 @@ local function new_jwt_auth(cfg)
     if key:get_key_type().sn ~= "rsaEncryption" then
         return nil, "public_key: not an RSA key"
     end
-    return setmetatable({ key = key, scopes = cfg.scopes or {} }, jwt_auth)
+    return setmetatable({ key = key, scopes = cfg.scopes or {}, forward = cfg.forward_claims }, jwt_auth)
 end
 
 local function decode_segment(seg)
@@ -146,6 +146,14 @@ function jwt_auth:check(call)
         return errors.forbidden("token lacks a required scope")
     end
     call.account = type(claims.sub) == "string" and claims.sub or ""
+    -- forward_claims: metadata key -> claim (SPEC 9.5)
+    for key, name in pairs(self.forward or {}) do
+        local v = claims[name]
+        if type(v) == "string" or type(v) == "number" then
+            call.forward = call.forward or {}
+            call.forward[key] = tostring(v)
+        end
+    end
 end
 
 -- rate-limit: token bucket per key, capacity 1+burst. resty.limit.req

@@ -18,6 +18,7 @@
 -- either reply or fail trailers-only, never both.
 
 local gateway = require("resty.micro.gateway")
+local httprules = require("resty.micro.httprules")
 local errors = require("resty.micro.errors")
 local cjson = require("cjson.safe")
 
@@ -102,8 +103,50 @@ local function read_body()
     return body
 end
 
--- access checks the request and turns it into the gRPC call.
+-- forward sends the JSON request message to grpc_method: route it like a
+-- gRPC call, then rewrite the request for grpc_pass.
+local function forward(grpc_method, msg, rule)
+    local err = gateway.route(grpc_method)
+    if err then
+        return fail(err)
+    end
+    ngx.ctx.micro.http = true
+    ngx.ctx.micro.rule = rule
+    -- gRPC wants POST to the bare method path: no HTTP method or query
+    -- string of the original request may leak upstream
+    ngx.req.set_method(ngx.HTTP_POST)
+    ngx.req.set_uri(grpc_method)
+    ngx.req.set_uri_args("")
+    ngx.req.set_body_data("\0" .. be32(#msg) .. msg)
+    ngx.req.set_header("Content-Type", "application/grpc+json")
+    ngx.req.clear_header("Accept-Encoding")
+end
+
+-- access checks the request and turns it into the gRPC call: an HTTP
+-- rule first (SPEC 2.2), else the /api mapping (SPEC 2.1).
 function _M.access()
+    local rs = gateway.rule_set()
+    local raw = ngx.var.request_uri:match("^[^?]*")
+    local rule, vars = httprules.find(rs and rs.http_rules, ngx.req.get_method(), raw)
+    if rule then
+        local ct = ngx.var.content_type
+        if not json_content_type(ct) then
+            return refuse(415, "content type " .. ct .. " not supported: use application/json")
+        end
+        local body = read_body()
+        if not body then
+            return fail(errors.internal("read request body"))
+        end
+        if #body > MAX_BODY then
+            return refuse(413, "request body larger than 4 MiB")
+        end
+        local msg, err = httprules.build(rule, body, vars, ngx.req.get_uri_args(0))
+        if not msg then
+            return fail(err)
+        end
+        return forward(rule.target, msg, rule)
+    end
+
     local path = ngx.var.uri
     local service, handler, method = path:match("^/api/([^/]+)/([^/]+)/([^/]+)$")
     if not service then
@@ -128,16 +171,7 @@ function _M.access()
         body = "{}"
     end
 
-    local grpc_method = "/" .. service .. "." .. handler .. "/" .. method
-    local err = gateway.route(grpc_method)
-    if err then
-        return fail(err)
-    end
-    ngx.ctx.micro.http = true
-    ngx.req.set_uri(grpc_method)
-    ngx.req.set_body_data("\0" .. be32(#body) .. body)
-    ngx.req.set_header("Content-Type", "application/grpc+json")
-    ngx.req.clear_header("Accept-Encoding")
+    return forward("/" .. service .. "." .. handler .. "/" .. method, body, nil)
 end
 
 -- header_filter turns the gRPC reply headers into the HTTP reply's.
@@ -195,7 +229,11 @@ function _M.body_filter()
     if #body >= 5 and sbyte(body, 1) == 0 then
         local n = read_be32(body, 2)
         if #body == 5 + n then
-            ngx.arg[1] = ssub(body, 6)
+            local msg = ssub(body, 6)
+            if m.rule then
+                msg = httprules.reply(m.rule, msg) -- response_body (SPEC 2.2)
+            end
+            ngx.arg[1] = msg
             return
         end
     end

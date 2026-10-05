@@ -6,6 +6,7 @@ local cjson = require("cjson.safe")
 local yaml = require("tinyyaml")
 local jsonschema = require("jsonschema")
 local plugins = require("resty.micro.plugins")
+local httprules = require("resty.micro.httprules")
 
 local sfind, ssub, sort = string.find, string.sub, table.sort
 
@@ -244,6 +245,25 @@ local function compile(doc, registry, generation)
         end
         return a.order < b.order
     end)
+    rs.http_rules, err = httprules.compile(doc.http_rules)
+    if not rs.http_rules then
+        return nil, err
+    end
+
+    -- keys any jwt-auth forwards are stripped from every inbound call,
+    -- whatever its route, so clients cannot set them (SPEC 9.5)
+    rs.forwarded = {}
+    local function collect(list)
+        for _, p in ipairs(list) do
+            for k in pairs(p.forward or {}) do
+                rs.forwarded[k] = true
+            end
+        end
+    end
+    collect(rs.global)
+    for _, rt in pairs(rs.methods) do collect(rt.plugins) end
+    for _, rt in pairs(rs.services) do collect(rt.plugins) end
+    for _, p in ipairs(rs.prefixes) do collect(p.route.plugins) end
     return rs
 end
 

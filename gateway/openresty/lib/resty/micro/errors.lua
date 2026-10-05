@@ -20,6 +20,7 @@ local sbyte = string.byte
 local _M = {}
 
 -- gRPC status codes used by the gateway.
+_M.INVALID_ARGUMENT = 3
 _M.DEADLINE_EXCEEDED = 4
 _M.NOT_FOUND = 5
 _M.PERMISSION_DENIED = 7
@@ -30,6 +31,7 @@ _M.UNAVAILABLE = 14
 _M.UNAUTHENTICATED = 16
 
 local STATUS_TEXT = {
+    [400] = "Bad Request",
     [401] = "Unauthorized",
     [403] = "Forbidden",
     [404] = "Not Found",
@@ -42,7 +44,7 @@ local STATUS_TEXT = {
 }
 
 local CODE_NAME = {
-    [0] = "OK", [4] = "DeadlineExceeded", [5] = "NotFound", [7] = "PermissionDenied",
+    [0] = "OK", [3] = "InvalidArgument", [4] = "DeadlineExceeded", [5] = "NotFound", [7] = "PermissionDenied",
     [8] = "ResourceExhausted", [12] = "Unimplemented", [13] = "Internal",
     [14] = "Unavailable", [16] = "Unauthenticated",
 }

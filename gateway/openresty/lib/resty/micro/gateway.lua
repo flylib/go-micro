@@ -243,6 +243,12 @@ local function route(path)
     end
 
     ngx.var.micro_trace = headers.prepare(hdrs, call.client_ip, rt.name, call.account)
+    for k in pairs(rs.forwarded or {}) do
+        ngx.req.clear_header(k)
+    end
+    for k, v in pairs(call.forward or {}) do
+        ngx.req.set_header(k, v)
+    end
     ngx.ctx.micro = {
         candidates = candidates,
         route = rt,
@@ -253,6 +259,7 @@ local function route(path)
 end
 
 _M.route = route
+_M.rule_set = rule_set
 
 function _M.access()
     local err = route(ngx.var.request_uri)
