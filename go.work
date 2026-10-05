@@ -13,14 +13,14 @@ use (
 	./config/source/nacos
 	./config/source/nats
 	./events/natsjs
-	./gateway/conformance
-	./gateway/proxy
 	./examples/auth
 	./examples/graceful-stop
 	./examples/grpc-interop
 	./examples/hello-world
 	./examples/smoke
 	./examples/web-service
+	./gateway/conformance
+	./gateway/proxy
 	./logger/slog
 	./logger/zap
 	./logger/zerolog
@@ -34,7 +34,9 @@ use (
 	./store/mysql
 	./store/nats-js-kv
 	./store/postgres
+	./store/redis
 	./sync/etcd
+	./sync/redis
 	./transport/grpc
 	./transport/nats
 	./wrapper/auth

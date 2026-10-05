@@ -10,4 +10,4 @@ Key-value persistence — the framework's simple durable state abstraction.
 
 ## Implementations
 
-file/bbolt (default, durable) · memory (built-in) · Postgres · MySQL · NATS JetStream KV (`store/<name>`, own go.mod).
+file/bbolt (default, durable) · memory (built-in) · Postgres · MySQL · NATS JetStream KV · Redis / Dragonfly / Valkey (`store/<name>`, own go.mod).
