@@ -24,7 +24,9 @@ type kafkaBroker struct {
 	connected bool
 }
 
-// NewBroker returns a kafka broker.
+// NewBroker returns a kafka broker. Publish waits for Kafka's
+// acknowledgement, batching concurrent publishes for up to BatchTimeout
+// (10ms); pass Async() for fire-and-forget publishing.
 func NewBroker(opts ...broker.Option) broker.Broker {
 	options := broker.Options{
 		Context: context.Background(),
@@ -118,27 +120,76 @@ func (b *kafkaBroker) writer(topic string) *kgo.Writer {
 	if w, ok = b.writers[topic]; ok {
 		return w
 	}
+	wo := writerOpts(&b.opts)
 	w = &kgo.Writer{
 		Addr:                   kgo.TCP(b.addrs...),
 		Topic:                  topic,
 		Balancer:               &kgo.LeastBytes{},
 		AllowAutoTopicCreation: true,
-		RequiredAcks:           kgo.RequireOne,
+		RequiredAcks:           wo.acks,
+		BatchTimeout:           wo.batchTimeout,
+		BatchSize:              wo.batchSize,
+		Async:                  wo.async,
+	}
+	if wo.async {
+		w.Completion = func(msgs []kgo.Message, err error) {
+			if err != nil {
+				b.publishFailed(topic, msgs, err)
+			}
+		}
 	}
 	b.writers[topic] = w
 	return w
 }
 
-func (b *kafkaBroker) Publish(topic string, m *broker.Message, _ ...broker.PublishOption) error {
+// Publish writes one message. By default it returns once Kafka has
+// acknowledged it; with Async it returns once the message is queued.
+func (b *kafkaBroker) Publish(topic string, m *broker.Message, opts ...broker.PublishOption) error {
+	var po broker.PublishOptions
+	for _, o := range opts {
+		o(&po)
+	}
+	ctx := po.Context
+	if ctx == nil {
+		ctx = b.opts.Context
+	}
 	headers := make([]kgo.Header, 0, len(m.Header))
 	for k, v := range m.Header {
 		headers = append(headers, kgo.Header{Key: k, Value: []byte(v)})
 	}
-	return b.writer(topic).WriteMessages(b.opts.Context, kgo.Message{
+	return b.writer(topic).WriteMessages(ctx, kgo.Message{
 		Value:   m.Body,
 		Headers: headers,
 	})
 }
+
+// publishFailed reports messages an async writer could not deliver.
+func (b *kafkaBroker) publishFailed(topic string, msgs []kgo.Message, err error) {
+	for _, km := range msgs {
+		ev := &publication{topic: topic, err: err, message: &broker.Message{Header: map[string]string{}, Body: km.Value}}
+		for _, hd := range km.Headers {
+			ev.message.Header[hd.Key] = string(hd.Value)
+		}
+		if eh := b.opts.ErrorHandler; eh != nil {
+			_ = eh(ev)
+			continue
+		}
+		b.opts.Logger.Logf(log.ErrorLevel, "[kafka] async publish to %s failed: %v", topic, err)
+	}
+}
+
+// publication is a message an async publish failed to deliver, handed
+// to the ErrorHandler.
+type publication struct {
+	topic   string
+	message *broker.Message
+	err     error
+}
+
+func (p *publication) Topic() string            { return p.topic }
+func (p *publication) Message() *broker.Message { return p.message }
+func (p *publication) Ack() error               { return nil }
+func (p *publication) Error() error             { return p.err }
 
 func (b *kafkaBroker) Subscribe(topic string, h broker.Handler, opts ...broker.SubscribeOption) (broker.Subscriber, error) {
 	opt := broker.NewSubscribeOptions(opts...)

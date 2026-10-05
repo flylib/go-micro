@@ -27,6 +27,7 @@ calendar-based versions (YYYY.MM) for the AI-native era.
 - **`micro new` and `micro build`** — generated `go.mod` and Dockerfiles target Go 1.26.
 
 ### Fixed
+- **Kafka publishes took a second each** — the Kafka broker kept kafka-go's default `BatchTimeout` of 1 s, so every synchronous `Publish` of one message waited out a batch (measured 1.00–1.03 s). The default is now 10 ms, about 15 ms per publish measured. New options `kafka.Async()`, `BatchTimeout`, `BatchSize` and `RequiredAcks` are available, and `Publish` now honours `broker.PublishContext`.
 - **Publish-only gRPC services had no broker** — `server/grpc` connected the broker only when the service had subscribers, so a service that only published (for example with `gateway/push`) failed every publish with `not connected`. It now connects on start like the RPC server. Without subscribers, a broker that cannot be reached is logged and does not stop the service. `push.Pusher` also connects its broker before the first push.
 
 ### Removed

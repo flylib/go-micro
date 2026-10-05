@@ -18,4 +18,4 @@ Publish ──▶ topic ──▶ sub A  ✉      Publish ──▶ topic ──
 
 ## Implementations
 
-HTTP (default, registry-based) · memory (built-in) · NATS · RabbitMQ · Kafka (`broker/<name>`, own go.mod; Kafka maps Queue → consumer group).
+HTTP (default, registry-based) · memory (built-in) · NATS · RabbitMQ · Kafka (`broker/<name>`, own go.mod; Kafka maps Queue → consumer group and offers [async publishing](kafka)).
