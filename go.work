@@ -24,6 +24,7 @@ use (
 	./logger/slog
 	./logger/zap
 	./logger/zerolog
+	./model/mongo
 	./model/postgres
 	./model/sqlite
 	./registry/consul
@@ -31,6 +32,7 @@ use (
 	./registry/nacos
 	./registry/nats
 	./server/grpc
+	./store/mongo
 	./store/mysql
 	./store/nats-js-kv
 	./store/postgres

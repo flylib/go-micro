@@ -49,12 +49,12 @@ go-micro/
 ├── health/         # Health checking
 ├── logger/         # Logging (slog, zap, zerolog modules)
 ├── metadata/       # Context metadata
-├── model/          # Typed data models (memory; SQLite, Postgres modules)
+├── model/          # Typed data models (memory; SQLite, Postgres, MongoDB modules)
 ├── registry/       # Service discovery (mDNS, memory; etcd, Consul, Nacos, NATS modules)
 ├── selector/       # Client-side load balancing
 ├── server/         # RPC server (mucp; gRPC module)
 ├── service/        # Service interface
-├── store/          # KV persistence (file, memory; Postgres, MySQL, NATS KV, Redis modules)
+├── store/          # KV persistence (file, memory; Postgres, MySQL, NATS KV, Redis, MongoDB modules)
 ├── sync/           # Locks and leader election (memory; etcd, Redis modules)
 ├── transport/      # Network transport (HTTP; gRPC, NATS modules)
 ├── web/            # Web service helpers (SSE)

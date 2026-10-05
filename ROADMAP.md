@@ -12,6 +12,7 @@ Priorities come from the teams that build on this fork: services on gRPC, regist
 - **Backends.**
   - A Nacos registry and Nacos config source.
   - `store/redis` and `sync/redis` for Redis, Dragonfly and Valkey.
+  - `store/mongo` and `model/mongo` for MongoDB.
   - Per-plugin modules, pinned by pseudo-version.
 - **Operations.**
   - `wrapper/logging` writes trace-aware access logs.
@@ -19,7 +20,6 @@ Priorities come from the teams that build on this fork: services on gRPC, regist
 
 ## Next
 
-- [ ] **MongoDB backend** for `store` and `model`.
 - [ ] **WebSocket bridge.** Long-lived client connections at the gateway that carry RPC calls and server pushes to and from services.
 - [ ] **Gateway deployment.** Kubernetes manifests or Helm charts for both gateways, and Prometheus metrics for the gateway.
 
