@@ -26,11 +26,19 @@ esac
 http_block=""
 [ -n "$http_listen" ] || http_block='/# BEGIN HTTP\/JSON entry/,/# END HTTP\/JSON entry/d'
 
+# optional WebSocket forwarding to a Go gateway (SPEC 2.3): without it,
+# /ws is an unknown path of the HTTP entry (404)
+ws_upstream="${MICRO_GATEWAY_WS_UPSTREAM:-}"
+ws_block=""
+[ -n "$ws_upstream" ] || ws_block='/# BEGIN WebSocket forwarding/,/# END WebSocket forwarding/d'
+
 sed -e "s|__LISTEN__|$listen|" \
     -e "s|__HTTP_LISTEN__|$http_listen|" \
     -e "s|__RESOLVER__|$resolver|" \
     -e "s|__SCHEME__|$scheme|" \
+    -e "s|__WS_UPSTREAM__|$ws_upstream|" \
     ${http_block:+-e "$http_block"} \
+    ${ws_block:+-e "$ws_block"} \
     /opt/micro/conf/nginx.conf.tmpl > /opt/micro/conf/nginx.conf
 
 # Not exec'd: when the rules cannot be loaded at start-up a worker stops

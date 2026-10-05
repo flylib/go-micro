@@ -249,6 +249,16 @@ local function compile(doc, registry, generation)
     if not rs.http_rules then
         return nil, err
     end
+    -- the WebSocket entry is served by a Go gateway reading these same
+    -- rules (SPEC 2.3); its plugins are built here only so both gateways
+    -- accept and reject the same documents and strip the same keys
+    local ws_plugins = {}
+    if type(doc.websocket) == "table" then
+        ws_plugins, err = plugins.build(doc.websocket.plugins, generation .. ".ws")
+        if not ws_plugins then
+            return nil, "websocket: " .. err
+        end
+    end
 
     -- keys any jwt-auth forwards are stripped from every inbound call,
     -- whatever its route, so clients cannot set them (SPEC 9.5)
@@ -264,6 +274,7 @@ local function compile(doc, registry, generation)
     for _, rt in pairs(rs.methods) do collect(rt.plugins) end
     for _, rt in pairs(rs.services) do collect(rt.plugins) end
     for _, p in ipairs(rs.prefixes) do collect(p.route.plugins) end
+    collect(ws_plugins)
     return rs
 end
 

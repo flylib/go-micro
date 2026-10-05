@@ -143,3 +143,17 @@ http_rules:
     T.ok(rs.forwarded["user-id"], "forwarded keys")
     T.eq(#rs.http_rules, 1, "http rules compiled")
 end)
+
+T.test("websocket section validated", function()
+    local key = require("resty.openssl.pkey").new({ type = "RSA", bits = 2048 })
+    local pub = ngx.encode_base64(key:tostring("public", "PEM"))
+    local rs = assert(rules.parse([[
+version: 1
+websocket:
+  plugins: [{name: jwt-auth, config: {public_key: "]] .. pub .. [[", forward_claims: {user-id: sub}}}]
+  topics: ["room.*", "user.{account}.>"]
+]], "nacos", 1))
+    T.ok(rs.forwarded["user-id"], "websocket forward_claims keys stripped")
+    T.eq(rules.parse("version: 1\nwebsocket: {plugins: [{name: nope}]}", "nacos", 1), nil, "unknown websocket plugin accepted")
+    T.eq(rules.parse("version: 1\nwebsocket: {topics: ['a..b']}", "nacos", 1), nil, "bad topic pattern accepted")
+end)

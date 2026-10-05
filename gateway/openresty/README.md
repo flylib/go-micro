@@ -28,6 +28,7 @@ Bootstrap settings ([SPEC.md §11](../SPEC.md#11-bootstrap)) are the same as the
 | `MICRO_GATEWAY_TRUSTED_PROXIES` | — | CIDRs whose `x-forwarded-for` is trusted |
 | `MICRO_GATEWAY_UPSTREAM_TLS` | `false` | Dial nodes with TLS (`grpcs://`) |
 | `MICRO_GATEWAY_HTTP_ADDRESS` | — | HTTP/JSON entry address (SPEC §2.1); empty removes that server |
+| `MICRO_GATEWAY_WS_UPSTREAM` | — | `host:port` of a Go gateway's HTTP entry; `/ws` is forwarded there (SPEC §2.3) |
 
 **Behaviour on bad rules.** A missing or invalid rules document stops the gateway, and the container exits with code 1. A later invalid update is logged and the previous rules stay.
 
@@ -70,6 +71,22 @@ curl 'localhost:8090/v1/users/42?verbose=true'   # -> /users.Users/Get {"id":"42
 - **Generating rules.** [protoc-gen-micro-gateway](../../cmd/protoc-gen-micro-gateway) generates the rules from `google.api.http` annotations.
 - **Caller identity.** Pair the rules with `jwt-auth` `forward_claims: {user-id: sub}` to give services the caller's id in metadata (§9.5). Clients cannot set those keys themselves.
 - **Implementation.** [httprules.lua](lib/resty/micro/httprules.lua) mirrors the Go gateway. Numbers with more than 15 significant digits are quoted before cjson decodes the body, so int64 ids stay exact. `response_body` is cut out of the reply text without decoding it.
+
+## WebSocket entry
+
+OpenResty does not implement the WebSocket entry itself ([SPEC.md §2.3](../SPEC.md#23-websocket-entry-optional)). With `MICRO_GATEWAY_WS_UPSTREAM` set, `location = /ws` forwards the upgrade, query included, to a [Go gateway](../proxy#websocket-entry). The Go gateway authenticates, routes calls, and delivers pushes and topic messages. Clients keep one entry point:
+
+```
+client ──wss──▶ OpenResty :8090 /ws ──ws──▶ Go gateway :8090 /ws ──gRPC──▶ services
+                                                 ▲
+                                    NATS ────────┘  push.ToUser / push.ToTopic from services
+```
+
+Setting it up:
+- **Same rules.** Point both gateways at the same rules source. OpenResty validates the `websocket` section too, and strips its `forward_claims` keys from its own calls.
+- **Trust.** Set `MICRO_GATEWAY_TRUSTED_PROXIES` on the Go gateway to OpenResty's addresses, so it sees the client IP from `X-Forwarded-For`.
+- **Timeouts.** Proxy read and send timeouts are 1 h. The Go gateway's 30 s pings keep idle connections open.
+- **Without it,** `/ws` is an unknown path (404).
 
 ## Layout
 
