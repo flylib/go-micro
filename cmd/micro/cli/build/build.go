@@ -145,7 +145,7 @@ func Docker(c *cli.Context) error {
 	return nil
 }
 
-const dockerfileTemplate = `FROM golang:1.22-alpine AS builder
+const dockerfileTemplate = `FROM golang:1.26-alpine AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download

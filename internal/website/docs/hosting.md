@@ -52,7 +52,7 @@ Package each service as a Docker image and deploy to a Kubernetes cluster or a s
 **Dockerfile example:**
 
 ```dockerfile
-FROM golang:1.21-alpine AS build
+FROM golang:1.26-alpine AS build
 WORKDIR /app
 COPY . .
 RUN go build -o service ./cmd/service

@@ -1,6 +1,6 @@
 module github.com/flylib/go-micro/events/natsjs
 
-go 1.24
+go 1.26.0
 
 require (
 	github.com/flylib/go-micro v0.0.0-20261005032823-771d2b07a7e2

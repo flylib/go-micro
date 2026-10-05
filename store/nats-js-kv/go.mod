@@ -1,6 +1,6 @@
 module github.com/flylib/go-micro/store/nats-js-kv
 
-go 1.24
+go 1.26.0
 
 require (
 	github.com/cornelk/hashmap v1.0.8

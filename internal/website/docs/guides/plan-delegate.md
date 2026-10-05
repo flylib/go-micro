@@ -13,7 +13,7 @@ They are exposed to the model as ordinary tools. There is no harness, graph, or 
 
 ## Prerequisites
 
-- Go 1.21+
+- Go 1.26+
 - An API key for any supported provider (Anthropic, OpenAI, Gemini, Groq, Mistral, Together, Atlas Cloud)
 
 ```bash

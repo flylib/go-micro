@@ -3,7 +3,7 @@ package template
 var (
 	Module = `module {{.Dir}}
 
-go 1.22
+go 1.26.0
 
 require (
 	github.com/flylib/go-micro latest

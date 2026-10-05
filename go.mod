@@ -1,8 +1,7 @@
 module github.com/flylib/go-micro
 
-go 1.24
+go 1.26.0
 
-toolchain go1.24.1
 
 require (
 	dario.cat/mergo v1.0.2

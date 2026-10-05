@@ -94,6 +94,8 @@ service := micro.New("greeter",
 
 ## Quick Start
 
+Requires **Go 1.26 or later**. Every module in this repository (core, plugins, gateways, examples) declares `go 1.26.0`, so any combination of them builds with the same toolchain.
+
 Install the CLI:
 
 ```bash
@@ -279,3 +281,10 @@ GOWORK=off go build ./...         # build a module standalone (as consumers see 
 ```
 
 Each plugin module also carries its own `replace github.com/flylib/go-micro => ../..` so it still builds standalone outside the workspace.
+
+**Go version.** All modules and `go.work` declare the same `go 1.26.0`. The floor is set by dependencies, not taste: etcd client v3.7 needs Go 1.26, and `golang.org/x/time` and `golang.org/x/text` need 1.25. Keep it in step when adding a module or raising the version (`go-version-file: go.mod` in CI follows the root module):
+
+```bash
+for f in $(git ls-files '*go.mod'); do (cd "$(dirname "$f")" && go mod edit -go=1.26.0); done
+go work edit -go=1.26.0
+```

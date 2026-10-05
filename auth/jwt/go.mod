@@ -1,6 +1,6 @@
 module github.com/flylib/go-micro/auth/jwt
 
-go 1.24
+go 1.26.0
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
