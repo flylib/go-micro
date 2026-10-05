@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/cache/redis
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro v0.0.0-20261005063438-00e6294a60a5
 	github.com/go-redis/redis/v8 v8.11.5
 )
 

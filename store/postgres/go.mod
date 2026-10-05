@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/store/postgres
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro v0.0.0-20261005063438-00e6294a60a5
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/lib/pq v1.10.9
 	github.com/pkg/errors v0.9.1

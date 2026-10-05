@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/logger/zerolog
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro v0.0.0-20261005063438-00e6294a60a5
 	github.com/rs/zerolog v1.35.1
 )
 

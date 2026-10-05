@@ -3,8 +3,8 @@ module github.com/flylib/go-micro/examples/smoke
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261005053906-fea526f1d910
-	github.com/flylib/go-micro/registry/nacos v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro v0.0.0-20261005063438-00e6294a60a5
+	github.com/flylib/go-micro/registry/nacos v0.0.0-20261005063438-00e6294a60a5
 	github.com/hashicorp/consul/api v1.32.1
 	github.com/segmentio/kafka-go v0.4.51
 	go.etcd.io/etcd/client/v3 v3.7.0
@@ -67,11 +67,11 @@ require (
 	github.com/clbanning/mxj/v2 v2.5.5 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
-	github.com/flylib/go-micro/broker/kafka v0.0.0-20261005053906-fea526f1d910
-	github.com/flylib/go-micro/config/source/consul v0.0.0-20261005053906-fea526f1d910
-	github.com/flylib/go-micro/config/source/etcd v0.0.0-20261005053906-fea526f1d910
-	github.com/flylib/go-micro/config/source/nacos v0.0.0-20261005053906-fea526f1d910
-	github.com/flylib/go-micro/sync/etcd v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro/broker/kafka v0.0.0-20261005063438-00e6294a60a5
+	github.com/flylib/go-micro/config/source/consul v0.0.0-20261005063438-00e6294a60a5
+	github.com/flylib/go-micro/config/source/etcd v0.0.0-20261005063438-00e6294a60a5
+	github.com/flylib/go-micro/config/source/nacos v0.0.0-20261005063438-00e6294a60a5
+	github.com/flylib/go-micro/sync/etcd v0.0.0-20261005063438-00e6294a60a5
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect

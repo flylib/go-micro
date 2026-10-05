@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/cornelk/hashmap v1.0.8
-	github.com/flylib/go-micro v0.0.0-20261005053906-fea526f1d910
+	github.com/flylib/go-micro v0.0.0-20261005063438-00e6294a60a5
 	github.com/google/uuid v1.6.0
 	github.com/nats-io/nats-server/v2 v2.11.3
 	github.com/nats-io/nats.go v1.42.0
