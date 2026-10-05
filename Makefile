@@ -8,7 +8,7 @@ LDFLAGS = -X $(GIT_IMPORT).BuildDate=$(BUILD_DATE) -X $(GIT_IMPORT).GitCommit=$(
 # GORELEASER_DOCKER_IMAGE = ghcr.io/goreleaser/goreleaser-cross:v1.25.7
 GORELEASER_DOCKER_IMAGE = ghcr.io/goreleaser/goreleaser:latest
 
-.PHONY: test test-race test-coverage harness lint fmt install-tools proto clean help gorelease-dry-run gorelease-dry-run-docker
+.PHONY: test test-race test-coverage lint fmt install-tools proto clean help gorelease-dry-run gorelease-dry-run-docker
 
 # Default target
 help:
@@ -40,13 +40,6 @@ test-coverage:
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
-# Run the end-to-end harnesses (deterministic, mock LLM — no API key).
-# The universe harness exits non-zero on assertion failure.
-harness:
-	go run ./internal/harness/universe
-	go run ./internal/harness/agent-flow
-	go run ./internal/harness/plan-delegate
-
 # Run linter
 lint:
 	golangci-lint run
@@ -62,7 +55,7 @@ install-tools:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install golang.org/x/tools/cmd/goimports@latest
 	go install github.com/kyoh86/richgo@latest
-	go install github.com/flylib/go-micro/cmd/protoc-gen-micro@latest
+	go install github.com/flylib/go-micro/cmd/protoc-gen-micro@main
 	@echo "Tools installed successfully"
 
 # Generate protobuf code
