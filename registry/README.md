@@ -24,6 +24,7 @@ server.Stop ─── Deregister(node) ───▶  node removed
 | memory | built-in | tests, single process |
 | Consul / etcd / NATS / Nacos | `registry/<name>` (own go.mod) | production discovery; Nacos: see [registry/nacos](nacos) for ports and auth |
 | cache | `registry/cache` | read-through cache wrapping any registry |
+| inspect | `registry/inspect` (own go.mod) | `micro-inspect`: finds registered nodes that do not answer (zombies) or are unhealthy, alerts to Feishu / DingTalk / WeCom |
 
 ```go
 reg := nacos.NewRegistry(registry.Addrs("10.0.0.1:8848"))

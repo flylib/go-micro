@@ -29,6 +29,7 @@ use (
 	./model/sqlite
 	./registry/consul
 	./registry/etcd
+	./registry/inspect
 	./registry/nacos
 	./registry/nats
 	./server/grpc
