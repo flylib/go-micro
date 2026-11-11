@@ -4,6 +4,7 @@ package nacos
 import (
 	"errors"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
@@ -14,6 +15,11 @@ import (
 
 	"github.com/flylib/go-micro/registry"
 )
+
+func init() {
+	// selectable by name: MICRO_REGISTRY=nacos
+	registry.RegisterPlugin("nacos", NewRegistry)
+}
 
 const (
 	metaVersionKey  = "micro.version"
@@ -42,7 +48,10 @@ func configure(r *nacosRegistry, opts ...registry.Option) error {
 		o(&r.opts)
 	}
 
-	r.group = "" // DEFAULT_GROUP
+	// the environment applies where no option is given: the names the
+	// gateways use (gateway/SPEC.md section 11)
+	r.group = os.Getenv(EnvGroup) // "" is DEFAULT_GROUP
+	r.namespace = os.Getenv(EnvNamespace)
 	if r.opts.Context != nil {
 		if g, ok := r.opts.Context.Value(groupNameKey{}).(string); ok {
 			r.group = g
@@ -57,28 +66,9 @@ func configure(r *nacosRegistry, opts ...registry.Option) error {
 		}
 	}
 
-	cc := constant.ClientConfig{
-		NotLoadCacheAtStart: true,
-		// a registry must observe services going away; without this the
-		// SDK refuses to update its cache when the instance list becomes
-		// empty (nacos "empty push protection")
-		UpdateCacheWhenEmpty: true,
-		TimeoutMs:            5000,
-		LogLevel:             "warn",
-	}
-	if r.opts.Context != nil {
-		if v, ok := r.opts.Context.Value(clientConfigKey{}).(constant.ClientConfig); ok {
-			cc = v
-		}
-	}
-	if r.namespace != "" && cc.NamespaceId == "" {
-		cc.NamespaceId = r.namespace
-	}
+	cc := r.clientConfig()
 	var grpcPort uint64
 	if r.opts.Context != nil {
-		if c, ok := r.opts.Context.Value(authKey{}).(credentials); ok {
-			cc.Username, cc.Password = c.username, c.password
-		}
 		grpcPort, _ = r.opts.Context.Value(grpcPortKey{}).(uint64)
 	}
 
@@ -263,4 +253,36 @@ func splitAddress(addr string) (string, uint64, error) {
 		return "", 0, err
 	}
 	return host, port, nil
+}
+
+// clientConfig builds the SDK client config. For the namespace and the
+// credentials an option wins over WithClientConfig, which wins over the
+// environment.
+func (r *nacosRegistry) clientConfig() constant.ClientConfig {
+	cc := constant.ClientConfig{
+		NotLoadCacheAtStart: true,
+		// a registry must observe services going away; without this the
+		// SDK refuses to update its cache when the instance list becomes
+		// empty (nacos "empty push protection")
+		UpdateCacheWhenEmpty: true,
+		TimeoutMs:            5000,
+		LogLevel:             "warn",
+	}
+	if r.opts.Context != nil {
+		if v, ok := r.opts.Context.Value(clientConfigKey{}).(constant.ClientConfig); ok {
+			cc = v
+		}
+	}
+	if r.namespace != "" && cc.NamespaceId == "" {
+		cc.NamespaceId = r.namespace
+	}
+	if u := os.Getenv(EnvUsername); u != "" && cc.Username == "" {
+		cc.Username, cc.Password = u, os.Getenv(EnvPassword)
+	}
+	if r.opts.Context != nil {
+		if c, ok := r.opts.Context.Value(authKey{}).(credentials); ok {
+			cc.Username, cc.Password = c.username, c.password
+		}
+	}
+	return cc
 }

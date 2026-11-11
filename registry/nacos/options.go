@@ -9,6 +9,14 @@ import (
 	"github.com/flylib/go-micro/registry"
 )
 
+// Environment variables read when the matching option is not given.
+const (
+	EnvNamespace = "MICRO_REGISTRY_NAMESPACE" // WithNamespaceId
+	EnvGroup     = "MICRO_REGISTRY_GROUP"     // WithGroupName
+	EnvUsername  = "MICRO_REGISTRY_USERNAME"  // WithAuth
+	EnvPassword  = "MICRO_REGISTRY_PASSWORD"
+)
+
 type namingClientKey struct{}
 type clientConfigKey struct{}
 type serverConfigsKey struct{}

@@ -20,6 +20,23 @@ reg := nacos.NewRegistry(
 service := micro.New("orders", micro.Registry(reg))
 ```
 
+By name, from the environment. The package registers the plugin `nacos`, and where no option is given it reads the variables the edge gateways use:
+
+```go
+import _ "github.com/flylib/go-micro/registry/nacos"
+
+service := micro.New("orders", micro.FromEnv())
+```
+
+| Variable | Option it stands in for |
+|---|---|
+| `MICRO_REGISTRY=nacos`, `MICRO_REGISTRY_ADDRESS` | `registry.Addrs` (read by `micro.FromEnv` and `Service.Init`) |
+| `MICRO_REGISTRY_USERNAME`, `MICRO_REGISTRY_PASSWORD` | `nacos.WithAuth` |
+| `MICRO_REGISTRY_NAMESPACE` | `nacos.WithNamespaceId` |
+| `MICRO_REGISTRY_GROUP` | `nacos.WithGroupName` |
+
+An option wins over `WithClientConfig`, which wins over the environment.
+
 ## Connection
 
 - **Protocol.** The SDK registers, subscribes and receives pushes over **gRPC**. It connects to the HTTP port + 1000: 9848 for `:8848`. Some calls, login among them, still use HTTP on the port you give. **Open both ports.**
