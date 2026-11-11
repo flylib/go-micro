@@ -148,7 +148,7 @@ func (r *rpcClient) call(
 	c, err := r.pool.Get(address, dOpts...)
 	if err != nil {
 		if c == nil {
-			return merrors.InternalServerError("go.micro.client", "connection error: %v", err)
+			return ConnectError(address, err)
 		}
 		logger.Log(log.ErrorLevel, "failed to close pool", err)
 	}
@@ -280,7 +280,7 @@ func (r *rpcClient) stream(ctx context.Context, node *registry.Node, req Request
 
 	c, err := r.opts.Transport.Dial(address, dOpts...)
 	if err != nil {
-		return nil, merrors.InternalServerError("go.micro.client", "connection error: %v", err)
+		return nil, ConnectError(address, err)
 	}
 
 	// increment the sequence number
@@ -471,6 +471,15 @@ func (r *rpcClient) Call(ctx context.Context, request Request, response interfac
 		rcall = callOpts.CallWrappers[i-1](rcall)
 	}
 
+	// a node that cannot be connected to is not chosen again in this call
+	picker := NewNodePicker(next, func(so ...selector.SelectOption) (selector.Next, error) {
+		o := callOpts
+		o.SelectOptions = append(append([]selector.SelectOption(nil), callOpts.SelectOptions...), so...)
+		return r.next(request, o)
+	})
+	var connErr error // the last attempt's connect error
+	exhausted := false
+
 	// return errors.New("go.micro.client", "request timeout", 408)
 	call := func(i int) error {
 		// call backoff first. Someone may want an initial start delay
@@ -479,13 +488,18 @@ func (r *rpcClient) Call(ctx context.Context, request Request, response interfac
 			return merrors.InternalServerError("go.micro.client", "backoff error: %v", err.Error())
 		}
 
-		// only sleep if greater than 0
-		if t.Seconds() > 0 {
+		// only sleep if greater than 0; a retry after a failed connection
+		// goes to another node and need not wait
+		if t.Seconds() > 0 && connErr == nil {
 			time.Sleep(t)
 		}
 
 		// select next node
-		node, err := next()
+		node, err := picker.Next()
+		if errors.Is(err, ErrNoNodeLeft) {
+			exhausted = true
+			return connErr
+		}
 		service := request.Service()
 
 		if err != nil {
@@ -502,6 +516,10 @@ func (r *rpcClient) Call(ctx context.Context, request Request, response interfac
 		// make the call
 		err = rcall(ctx, node, request, response, callOpts)
 		r.opts.Selector.Mark(service, node, err)
+		if connErr = nil; IsConnectError(err) {
+			picker.Failed(node)
+			connErr = err
+		}
 
 		return err
 	}
@@ -531,6 +549,10 @@ func (r *rpcClient) Call(ctx context.Context, request Request, response interfac
 			// if the call succeeded lets bail early
 			if err == nil {
 				return nil
+			}
+
+			if exhausted {
+				return err
 			}
 
 			retry, rerr := callOpts.Retry(ctx, request, i, err)
@@ -572,6 +594,15 @@ func (r *rpcClient) Stream(ctx context.Context, request Request, opts ...CallOpt
 	default:
 	}
 
+	// a node that cannot be connected to is not chosen again in this call
+	picker := NewNodePicker(next, func(so ...selector.SelectOption) (selector.Next, error) {
+		o := callOpts
+		o.SelectOptions = append(append([]selector.SelectOption(nil), callOpts.SelectOptions...), so...)
+		return r.next(request, o)
+	})
+	var connErr error // the last attempt's connect error
+	exhausted := false
+
 	call := func(i int) (Stream, error) {
 		// call backoff first. Someone may want an initial start delay
 		t, err := callOpts.Backoff(ctx, request, i)
@@ -579,12 +610,17 @@ func (r *rpcClient) Stream(ctx context.Context, request Request, opts ...CallOpt
 			return nil, merrors.InternalServerError("go.micro.client", "backoff error: %v", err.Error())
 		}
 
-		// only sleep if greater than 0
-		if t.Seconds() > 0 {
+		// only sleep if greater than 0; a retry after a failed connection
+		// goes to another node and need not wait
+		if t.Seconds() > 0 && connErr == nil {
 			time.Sleep(t)
 		}
 
-		node, err := next()
+		node, err := picker.Next()
+		if errors.Is(err, ErrNoNodeLeft) {
+			exhausted = true
+			return nil, connErr
+		}
 		service := request.Service()
 
 		if err != nil {
@@ -600,6 +636,10 @@ func (r *rpcClient) Stream(ctx context.Context, request Request, opts ...CallOpt
 
 		stream, err := r.stream(ctx, node, request, callOpts)
 		r.opts.Selector.Mark(service, node, err)
+		if connErr = nil; IsConnectError(err) {
+			picker.Failed(node)
+			connErr = err
+		}
 
 		return stream, err
 	}
@@ -634,6 +674,10 @@ func (r *rpcClient) Stream(ctx context.Context, request Request, opts ...CallOpt
 			// if the call succeeded lets bail early
 			if rsp.err == nil {
 				return rsp.stream, nil
+			}
+
+			if exhausted {
+				return nil, rsp.err
 			}
 
 			retry, rerr := callOpts.Retry(ctx, request, i, rsp.err)

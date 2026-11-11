@@ -16,7 +16,7 @@ var (
 	// DefaultBackoff is the default backoff function for retries.
 	DefaultBackoff = exponentialBackoff
 	// DefaultRetry is the default check-for-retry function for retries.
-	DefaultRetry = RetryOnError
+	DefaultRetry = RetryOnConnect
 	// DefaultRetries is the default number of times a request is tried.
 	DefaultRetries = 5
 	// DefaultRequestTimeout is the default request timeout.

@@ -4,6 +4,7 @@ package grpc
 import (
 	"context"
 	"crypto/tls"
+	stderrors "errors"
 	"fmt"
 	"net"
 	"reflect"
@@ -21,6 +22,7 @@ import (
 	"github.com/flylib/go-micro/selector"
 	pnet "github.com/flylib/go-micro/util/net"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding"
 	gmetadata "google.golang.org/grpc/metadata"
@@ -160,6 +162,13 @@ func (g *grpcClient) call(ctx context.Context, node *registry.Node, req client.R
 		g.pool.release(address, cc, grr)
 	}()
 
+	// nothing is sent until the connection is up: a node that cannot be
+	// reached is a connect error, which is safe to retry on another node
+	if err := waitReady(ctx, cc.ClientConn, opts.DialTimeout); err != nil {
+		grr = client.ConnectError(address, err)
+		return grr
+	}
+
 	ch := make(chan error, 1)
 
 	go func() {
@@ -239,6 +248,10 @@ func (g *grpcClient) stream(ctx context.Context, node *registry.Node, req client
 	cc, err := g.pool.getConn(dialCtx, address, grpcDialOptions...)
 	if err != nil {
 		return errors.InternalServerError("go.micro.client", fmt.Sprintf("Error sending request: %v", err))
+	}
+	if err := waitReady(ctx, cc.ClientConn, opts.DialTimeout); err != nil {
+		g.pool.release(address, cc, err)
+		return client.ConnectError(address, err)
 	}
 
 	desc := &grpc.StreamDesc{
@@ -439,6 +452,15 @@ func (g *grpcClient) Call(ctx context.Context, req client.Request, rsp interface
 		gcall = callOpts.CallWrappers[i-1](gcall)
 	}
 
+	// a node that cannot be connected to is not chosen again in this call
+	picker := client.NewNodePicker(next, func(so ...selector.SelectOption) (selector.Next, error) {
+		o := callOpts
+		o.SelectOptions = append(append([]selector.SelectOption(nil), callOpts.SelectOptions...), so...)
+		return g.next(req, o)
+	})
+	var connErr error // the last attempt's connect error
+	exhausted := false
+
 	// return errors.New("go.micro.client", "request timeout", 408)
 	call := func(i int) error {
 		// call backoff first. Someone may want an initial start delay
@@ -447,13 +469,18 @@ func (g *grpcClient) Call(ctx context.Context, req client.Request, rsp interface
 			return errors.InternalServerError("go.micro.client", err.Error())
 		}
 
-		// only sleep if greater than 0
-		if t.Seconds() > 0 {
+		// only sleep if greater than 0; a retry after a failed connection
+		// goes to another node and need not wait
+		if t.Seconds() > 0 && connErr == nil {
 			time.Sleep(t)
 		}
 
 		// select next node
-		node, err := next()
+		node, err := picker.Next()
+		if stderrors.Is(err, client.ErrNoNodeLeft) {
+			exhausted = true
+			return connErr
+		}
 		service := req.Service()
 		if err != nil {
 			if err == selector.ErrNotFound {
@@ -465,6 +492,10 @@ func (g *grpcClient) Call(ctx context.Context, req client.Request, rsp interface
 		// make the call
 		err = gcall(ctx, node, req, rsp, callOpts)
 		g.opts.Selector.Mark(service, node, err)
+		if connErr = nil; client.IsConnectError(err) {
+			picker.Failed(node)
+			connErr = err
+		}
 		if verr, ok := err.(*errors.Error); ok {
 			return verr
 		}
@@ -487,6 +518,10 @@ func (g *grpcClient) Call(ctx context.Context, req client.Request, rsp interface
 			// if the call succeeded lets bail early
 			if err == nil {
 				return nil
+			}
+
+			if exhausted {
+				return err
 			}
 
 			retry, rerr := callOpts.Retry(ctx, req, i, err)
@@ -534,6 +569,15 @@ func (g *grpcClient) Stream(ctx context.Context, req client.Request, opts ...cli
 		gstream = callOpts.CallWrappers[i-1](gstream)
 	}
 
+	// a node that cannot be connected to is not chosen again in this call
+	picker := client.NewNodePicker(next, func(so ...selector.SelectOption) (selector.Next, error) {
+		o := callOpts
+		o.SelectOptions = append(append([]selector.SelectOption(nil), callOpts.SelectOptions...), so...)
+		return g.next(req, o)
+	})
+	var connErr error // the last attempt's connect error
+	exhausted := false
+
 	call := func(i int) (client.Stream, error) {
 		// call backoff first. Someone may want an initial start delay
 		t, err := callOpts.Backoff(ctx, req, i)
@@ -541,12 +585,17 @@ func (g *grpcClient) Stream(ctx context.Context, req client.Request, opts ...cli
 			return nil, errors.InternalServerError("go.micro.client", err.Error())
 		}
 
-		// only sleep if greater than 0
-		if t.Seconds() > 0 {
+		// only sleep if greater than 0; a retry after a failed connection
+		// goes to another node and need not wait
+		if t.Seconds() > 0 && connErr == nil {
 			time.Sleep(t)
 		}
 
-		node, err := next()
+		node, err := picker.Next()
+		if stderrors.Is(err, client.ErrNoNodeLeft) {
+			exhausted = true
+			return nil, connErr
+		}
 		service := req.Service()
 		if err != nil {
 			if err == selector.ErrNotFound {
@@ -560,6 +609,10 @@ func (g *grpcClient) Stream(ctx context.Context, req client.Request, opts ...cli
 		err = g.stream(ctx, node, req, stream, callOpts)
 
 		g.opts.Selector.Mark(service, node, err)
+		if connErr = nil; client.IsConnectError(err) {
+			picker.Failed(node)
+			connErr = err
+		}
 		return stream, err
 	}
 
@@ -586,7 +639,11 @@ func (g *grpcClient) Stream(ctx context.Context, req client.Request, opts ...cli
 				return rsp.stream, nil
 			}
 
-			retry, rerr := callOpts.Retry(ctx, req, i, err)
+			if exhausted {
+				return nil, rsp.err
+			}
+
+			retry, rerr := callOpts.Retry(ctx, req, i, rsp.err)
 			if rerr != nil {
 				return nil, rerr
 			}
@@ -706,4 +763,30 @@ func newClient(opts ...client.Option) client.Client {
 
 func NewClient(opts ...client.Option) client.Client {
 	return newClient(opts...)
+}
+
+// waitReady waits until cc is connected, for at most timeout (5s when
+// unset). It fails at once when the connection attempt has failed, so
+// the caller can move on to another node.
+func waitReady(ctx context.Context, cc *grpc.ClientConn, timeout time.Duration) error {
+	if timeout <= 0 {
+		timeout = 5 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	cc.Connect()
+	for {
+		switch s := cc.GetState(); s {
+		case connectivity.Ready:
+			return nil
+		case connectivity.TransientFailure:
+			return stderrors.New("connection failed (refused, unreachable or handshake error)")
+		case connectivity.Shutdown:
+			return stderrors.New("connection closed")
+		default:
+			if !cc.WaitForStateChange(ctx, s) {
+				return fmt.Errorf("not connected within %s", timeout)
+			}
+		}
+	}
 }
