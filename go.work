@@ -33,6 +33,7 @@ use (
 	./registry/nacos
 	./registry/nats
 	./server/grpc
+	./service/grpc
 	./store/mongo
 	./store/mysql
 	./store/nats-js-kv
