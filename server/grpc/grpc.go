@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"os"
 	"reflect"
 	"runtime/debug"
 	"sort"
@@ -219,25 +220,47 @@ func (g *grpcServer) getGrpcServer() *grpc.Server {
 	return nil
 }
 
+// getDrainDelay returns the DrainDelay option, else
+// MICRO_SERVER_DRAIN_DELAY, else 0.
 func (g *grpcServer) getDrainDelay() time.Duration {
-	if g.opts.Context == nil {
-		return 0
+	if g.opts.Context != nil {
+		if d, ok := g.opts.Context.Value(drainDelayKey{}).(time.Duration); ok {
+			return d
+		}
 	}
-	d, _ := g.opts.Context.Value(drainDelayKey{}).(time.Duration)
-	return d
+	if d, ok := envDuration(EnvDrainDelay); ok {
+		return d
+	}
+	return 0
 }
 
+// getGracefulStopTimeout returns the GracefulStopTimeout option, else
+// MICRO_SERVER_GRACEFUL_STOP_TIMEOUT, else DefaultGracefulStopTimeout.
 func (g *grpcServer) getGracefulStopTimeout() time.Duration {
-	if g.opts.Context == nil {
-		return time.Second
+	if g.opts.Context != nil {
+		if d, ok := g.opts.Context.Value(gracefulStopTimeoutKey{}).(time.Duration); ok && d > 0 {
+			return d
+		}
 	}
-
-	timeout, ok := g.opts.Context.Value(gracefulStopTimeoutKey{}).(time.Duration)
-	if !ok || timeout <= 0 {
-		return time.Second
+	if d, ok := envDuration(EnvGracefulStopTimeout); ok && d > 0 {
+		return d
 	}
+	return DefaultGracefulStopTimeout
+}
 
-	return timeout
+// envDuration reads a duration such as "20s" from the environment. A
+// value that does not parse is reported and ignored.
+func envDuration(name string) (time.Duration, bool) {
+	v := os.Getenv(name)
+	if v == "" {
+		return 0, false
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d < 0 {
+		logger.Logf(logger.WarnLevel, "Server [grpc] ignoring %s=%q: want a duration such as 20s", name, v)
+		return 0, false
+	}
+	return d, true
 }
 
 func (g *grpcServer) handler(srv interface{}, stream grpc.ServerStream) error {

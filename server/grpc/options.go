@@ -75,7 +75,22 @@ func MaxMsgSize(s int) server.Option {
 	return setServerOption(maxMsgSizeKey{}, s)
 }
 
-// GracefulStopTimeout sets how long Stop waits for active RPCs before forcing Stop.
+const (
+	// DefaultGracefulStopTimeout is how long Stop waits for calls in
+	// flight before it closes them. With the default drain delay of 0 it
+	// fits Kubernetes' default 30s termination grace period.
+	DefaultGracefulStopTimeout = 15 * time.Second
+
+	// EnvGracefulStopTimeout and EnvDrainDelay set GracefulStopTimeout and
+	// DrainDelay from the environment, as durations such as "20s", for
+	// servers whose code sets neither.
+	EnvGracefulStopTimeout = "MICRO_SERVER_GRACEFUL_STOP_TIMEOUT"
+	EnvDrainDelay          = "MICRO_SERVER_DRAIN_DELAY"
+)
+
+// GracefulStopTimeout sets how long Stop waits for calls in flight before
+// it closes them (default DefaultGracefulStopTimeout). Without this
+// option, MICRO_SERVER_GRACEFUL_STOP_TIMEOUT applies.
 func GracefulStopTimeout(timeout time.Duration) server.Option {
 	return setServerOption(gracefulStopTimeoutKey{}, timeout)
 }
@@ -84,7 +99,8 @@ func GracefulStopTimeout(timeout time.Duration) server.Option {
 // and its health turns NOT_SERVING, before it stops accepting calls. It
 // gives callers time to learn that the node is gone: registry watches
 // and caches, gateways that poll, Kubernetes endpoints. The default is 0.
-// A few seconds avoid failed calls during rolling deploys.
+// A few seconds avoid failed calls during rolling deploys. Without this
+// option, MICRO_SERVER_DRAIN_DELAY applies.
 func DrainDelay(d time.Duration) server.Option {
 	return setServerOption(drainDelayKey{}, d)
 }

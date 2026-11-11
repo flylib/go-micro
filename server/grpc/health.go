@@ -103,6 +103,8 @@ func (h *healthServer) Watch(req *healthpb.HealthCheckRequest, stream healthpb.H
 	last := healthpb.HealthCheckResponse_ServingStatus(-1)
 	t := time.NewTicker(watchInterval)
 	defer t.Stop()
+	stop := time.NewTicker(200 * time.Millisecond)
+	defer stop.Stop()
 	for {
 		st, _ := h.status(stream.Context(), req.GetService())
 		if st != last {
@@ -111,10 +113,24 @@ func (h *healthServer) Watch(req *healthpb.HealthCheckRequest, stream healthpb.H
 			}
 			last = st
 		}
-		select {
-		case <-stream.Context().Done():
-			return stream.Context().Err()
-		case <-t.C:
+		// a watcher has been told NOT_SERVING: end its stream, or it
+		// would hold Stop until the graceful stop timeout
+		if h.g.isStopping() {
+			return status.Error(codes.Unavailable, "server is stopping")
+		}
+	wait:
+		for {
+			select {
+			case <-stream.Context().Done():
+				return stream.Context().Err()
+			case <-t.C:
+				break wait
+			case <-stop.C:
+				// notice a stopping server without waiting for the interval
+				if h.g.isStopping() {
+					break wait
+				}
+			}
 		}
 	}
 }

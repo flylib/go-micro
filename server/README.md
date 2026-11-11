@@ -18,7 +18,16 @@ Implementations: RPC (default) · gRPC (`server/grpc`, own module) · mock (test
 1. Readiness turns `NOT_SERVING`.
 2. The node is deregistered.
 3. With `grpc.DrainDelay(d)`, the server keeps serving for `d`, so callers that have not yet noticed still get answers. The default is 0.
-4. The server stops accepting calls and waits for calls in flight, for at most `grpc.GracefulStopTimeout` (default 1 s). Then it closes the rest.
+4. The server stops accepting calls and waits for calls in flight, for at most `grpc.GracefulStopTimeout` (default 15 s). Then it closes the rest. Open health `Watch` streams are ended at once, so they do not hold the stop.
+
+Both times can be set in code or, when the code sets neither, from the environment:
+
+| Option | Environment | Default |
+|---|---|---|
+| `grpc.DrainDelay(d)` | `MICRO_SERVER_DRAIN_DELAY=5s` | 0 |
+| `grpc.GracefulStopTimeout(d)` | `MICRO_SERVER_GRACEFUL_STOP_TIMEOUT=30s` | 15 s |
+
+Keep drain delay + graceful stop timeout below the orchestrator's kill deadline (Kubernetes `terminationGracePeriodSeconds`, 30 s by default).
 
 ## Health checks (gRPC server)
 
