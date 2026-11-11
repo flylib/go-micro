@@ -6,7 +6,11 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/status"
+
+	"github.com/flylib/go-micro/client"
 )
 
 type pool struct {
@@ -176,7 +180,7 @@ func (p *pool) release(addr string, conn *poolConn, err error) {
 		//  2. too many idle conn or
 		//  3. conn is too old
 		now := time.Now().Unix()
-		if err != nil || sp.idle >= p.maxIdle || now-created > p.ttl {
+		if connBroken(err) || sp.idle >= p.maxIdle || now-created > p.ttl {
 			removeConn(conn)
 			p.Unlock()
 			conn.ClientConn.Close()
@@ -215,4 +219,15 @@ func addConnAfter(conn *poolConn, after *poolConn) {
 	conn.in = true
 	conn.sp.count++
 	return
+}
+
+// connBroken reports whether err says the connection itself failed: it
+// could not be made, or gRPC reports the transport as unavailable. An
+// error of the call (a service's error, a timeout, a cancellation) leaves
+// the connection usable, so it stays in the pool.
+func connBroken(err error) bool {
+	if err == nil {
+		return false
+	}
+	return status.Code(err) == codes.Unavailable || client.IsConnectError(err)
 }

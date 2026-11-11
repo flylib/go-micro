@@ -157,15 +157,19 @@ func (g *grpcClient) call(ctx context.Context, node *registry.Node, req client.R
 	if err != nil {
 		return errors.InternalServerError("go.micro.client", fmt.Sprintf("Error sending request: %v", err))
 	}
+	// the error the connection is released with: the raw gRPC error, so
+	// the pool can tell a broken connection from a failed call
+	var relErr error
 	defer func() {
 		// defer execution of release
-		g.pool.release(address, cc, grr)
+		g.pool.release(address, cc, relErr)
 	}()
 
 	// nothing is sent until the connection is up: a node that cannot be
 	// reached is a connect error, which is safe to retry on another node
 	if err := waitReady(ctx, cc.ClientConn, opts.DialTimeout); err != nil {
 		grr = client.ConnectError(address, err)
+		relErr = grr
 		return grr
 	}
 
@@ -178,13 +182,13 @@ func (g *grpcClient) call(ctx context.Context, node *registry.Node, req client.R
 		if opts := callOpts(opts); opts != nil {
 			grpcCallOptions = append(grpcCallOptions, opts...)
 		}
-		err := cc.Invoke(ctx, methodToGRPC(req.Service(), req.Endpoint()), req.Body(), rsp, grpcCallOptions...)
-		ch <- microError(err)
+		ch <- cc.Invoke(ctx, methodToGRPC(req.Service(), req.Endpoint()), req.Body(), rsp, grpcCallOptions...)
 	}()
 
 	select {
 	case err := <-ch:
-		grr = err
+		relErr = err
+		grr = microError(err)
 	case <-ctx.Done():
 		grr = errors.Timeout("go.micro.client", "%v", ctx.Err())
 	}

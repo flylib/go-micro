@@ -12,7 +12,9 @@ import (
 	"github.com/flylib/go-micro/registry"
 	"github.com/flylib/go-micro/selector"
 	pgrpc "google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	pb "google.golang.org/grpc/examples/helloworld/helloworld"
+	"google.golang.org/grpc/status"
 )
 
 // countingGreeter counts calls; the name "Timeout" fails with 408.
@@ -148,5 +150,64 @@ func TestStreamRetriesAnotherNodeOnConnectFailure(t *testing.T) {
 			t.Fatalf("stream %d: %v", i, err)
 		}
 		_ = s.Close()
+	}
+}
+
+// countingListener counts accepted connections.
+type countingListener struct {
+	net.Listener
+	accepted atomic.Int64
+}
+
+func (l *countingListener) Accept() (net.Conn, error) {
+	c, err := l.Listener.Accept()
+	if err == nil {
+		l.accepted.Add(1)
+	}
+	return c, err
+}
+
+// A call that fails with the service's error leaves the connection in the
+// pool: only a broken connection is closed.
+func TestPoolKeepsConnectionAfterCallErrors(t *testing.T) {
+	inner, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := &countingListener{Listener: inner}
+	s := pgrpc.NewServer()
+	pb.RegisterGreeterServer(s, &countingGreeter{})
+	go s.Serve(l)
+	t.Cleanup(s.Stop)
+
+	c := retryClient(t, []string{inner.Addr().String()})
+	for i := 0; i < 5; i++ {
+		if err := hello(c, "Timeout"); err == nil {
+			t.Fatal("want the service's error")
+		}
+	}
+	if err := hello(c, "John"); err != nil {
+		t.Fatal(err)
+	}
+	if n := l.accepted.Load(); n != 1 {
+		t.Fatalf("%d connections for 6 calls, want 1", n)
+	}
+}
+
+func TestConnBroken(t *testing.T) {
+	for _, tc := range []struct {
+		err  error
+		want bool
+	}{
+		{nil, false},
+		{errors.BadRequest("svc", "bad input"), false},
+		{status.Error(codes.InvalidArgument, "bad"), false},
+		{status.Error(codes.DeadlineExceeded, "slow"), false},
+		{status.Error(codes.Unavailable, "transport is closing"), true},
+		{client.ConnectError("10.0.0.1:1", errors.New("x", "refused", 0)), true},
+	} {
+		if got := connBroken(tc.err); got != tc.want {
+			t.Errorf("connBroken(%v) = %v", tc.err, got)
+		}
 	}
 }
