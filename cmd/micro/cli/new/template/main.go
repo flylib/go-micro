@@ -7,14 +7,17 @@ import (
 	"{{.Dir}}/handler"
 	pb "{{.Dir}}/proto"
 
-	"github.com/flylib/go-micro"
+	grpcservice "github.com/flylib/go-micro/service/grpc"
 )
 
 func main() {
-	// Create service
-	service := micro.New("{{lower .Alias}}")
+	// Create a service on gRPC. It is configured from the environment:
+	// MICRO_SERVER_ADDRESS (e.g. :9001), MICRO_REGISTRY, MICRO_BROKER, ...
+	// To select a plugin by name, link it in with a blank import, e.g.
+	//   _ "github.com/flylib/go-micro/registry/nacos"
+	service := grpcservice.New("{{lower .Alias}}")
 
-	// Initialize service
+	// Parse command line flags
 	service.Init()
 
 	// Register handler

@@ -126,12 +126,14 @@ import (
 	"{{.Dir}}/handler"
 	pb "{{.Dir}}/proto"
 
-	"github.com/flylib/go-micro"
 	log "github.com/flylib/go-micro/logger"
+	grpcservice "github.com/flylib/go-micro/service/grpc"
 )
 
 func main() {
-	service := micro.New("{{lower .Alias}}")
+	// A service on gRPC, configured from the environment
+	// (MICRO_SERVER_ADDRESS, MICRO_REGISTRY, MICRO_BROKER, ...)
+	service := grpcservice.New("{{lower .Alias}}")
 
 	service.Init()
 

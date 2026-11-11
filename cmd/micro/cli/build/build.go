@@ -155,6 +155,7 @@ RUN CGO_ENABLED=0 go build -o /service .
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 COPY --from=builder /service /service
+ENV MICRO_SERVER_ADDRESS=:%d
 EXPOSE %d
 CMD ["/service"]
 `
@@ -168,7 +169,7 @@ func buildDockerImage(name, dir string, port int, tag, registry string, push boo
 	dockerfilePath := filepath.Join(dir, "Dockerfile")
 	if _, err := os.Stat(dockerfilePath); os.IsNotExist(err) {
 		fmt.Printf("Generating Dockerfile for %s...\n", name)
-		dockerfile := fmt.Sprintf(dockerfileTemplate, port)
+		dockerfile := fmt.Sprintf(dockerfileTemplate, port, port)
 		if err := os.WriteFile(dockerfilePath, []byte(dockerfile), 0644); err != nil {
 			return fmt.Errorf("failed to write Dockerfile: %w", err)
 		}

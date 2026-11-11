@@ -28,7 +28,7 @@ micro new gateway --template api        # API gateway with health check
 ```
 
 This will:
-- Create a new service in the `helloworld` directory
+- Create a new service in the `helloworld` directory. It runs on gRPC ([`service/grpc`](../../service/grpc)) and reads its listen address, registry and broker from the environment (`MICRO_SERVER_ADDRESS`, `MICRO_REGISTRY`, `MICRO_BROKER`, ...)
 - Automatically run `go mod tidy` and `make proto` for you
 - Show the updated project tree including generated files
 - Warn you if `protoc` is not installed, with install instructions
@@ -88,7 +88,7 @@ curl -c /tmp/micro.jar -d 'id=admin&password=micro' http://localhost:8080/auth/l
 curl -b /tmp/micro.jar -X POST http://localhost:8080/api/helloworld/Helloworld/Call -d '{"name": "World"}'
 ```
 
-`/api/{service}/{Handler}/{Method}` (or `/api/{service}/{Handler.Method}`) calls the service like `micro call` does. That works for services on the default RPC server, which `micro new` generates. Services on the gRPC server (`server/grpc`) are answered with 501. Call those through an [edge gateway](../../gateway) instead.
+`/api/{service}/{Handler}/{Method}` (or `/api/{service}/{Handler.Method}`) calls the service like `micro call` does. Both work for services on the gRPC server, which `micro new` generates, and on the default RPC server. A gRPC node is called with gRPC+JSON over HTTP/2, so the request and reply are the JSON form of the proto messages. Streaming endpoints are not supported here; use an [edge gateway](../../gateway) for those.
 
 Or browse to http://localhost:8080 and use the web interface.
 
