@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/flylib/go-micro/cmd/micro/internal/caller"
 	"math"
 	"os"
 	"sort"
@@ -12,11 +13,11 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/stretchr/objx"
-	"github.com/urfave/cli/v2"
 	"github.com/flylib/go-micro/client"
 	"github.com/flylib/go-micro/metadata"
 	"github.com/flylib/go-micro/registry"
+	"github.com/stretchr/objx"
+	"github.com/urfave/cli/v2"
 )
 
 // AddMetadataToContext parses metadata strings in the format "Key:Value" and adds them to the context
@@ -174,11 +175,13 @@ func CallService(srv *registry.Service, args []string) error {
 		return err
 	}
 
-	// construct and execute the request using the json content type
-	req := client.DefaultClient.NewRequest(srv.Name, endpoint, body, client.WithContentType("application/json"))
-	var rsp json.RawMessage
-
-	if err := client.DefaultClient.Call(callCtx, req, &rsp); err != nil {
+	// execute the request as JSON, on whichever server the service runs
+	reqBody, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	rsp, err := caller.Call(callCtx, registry.DefaultRegistry, client.DefaultClient, srv.Name, endpoint, reqBody)
+	if err != nil {
 		return err
 	}
 

@@ -424,9 +424,9 @@ curl -X POST http://localhost:8080/api/greeter/Greeter/Hello \
 For `POST /api/{service}/{Handler}/{Method}` (or `/api/{service}/{Handler.Method}`), the gateway:
 1. Extracts the Bearer token from the HTTP `Authorization` header (or the `micro_token` cookie)
 2. Verifies it with the dashboard's own JWT keys and checks any endpoint scopes set on the dashboard
-3. Calls the service through the default client, as `micro call` does
+3. Calls the service as `micro call` does, on the gRPC or the default RPC server
 
-The gateway's token is not passed on: the `Authorization` header is dropped from the call metadata, so a service wrapped with `AuthHandler` does not see it. Calls only reach services on the default RPC server; services on `server/grpc` get `501` and are called through the edge gateways in [gateway/](../../gateway/) instead. `micro run` starts the same gateway, with auth on and a default `admin`/`micro` login.
+The gateway's token is not passed on: the `Authorization` header is dropped from the call metadata, so a service wrapped with `AuthHandler` does not see it. Production traffic goes through the edge gateways in [gateway/](../../gateway/), which forward token claims to services. `micro run` starts the same gateway, with auth on and a default `admin`/`micro` login.
 
 ## Best Practices
 

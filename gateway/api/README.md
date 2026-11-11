@@ -54,7 +54,7 @@ type Options struct {
 Both `micro run` and `micro server` start the shell through `server.StartGateway` (`cmd/micro/server/gateway.go`), with auth enabled. That registrar (`registerHandlers` in `cmd/micro/server/server.go`) serves:
 
 - **The dashboard**: services, endpoints, logs and status, with forms to call endpoints.
-- **`POST /api/{service}/{Handler}/{Method}`**: calls the service with the JSON body through the default client, as `micro call` does (`cmd/micro/server/api.go`). Services on the gRPC server are answered with 501; use an edge gateway for those.
+- **`POST /api/{service}/{Handler}/{Method}`**: calls the service with the JSON body, as `micro call` does (`cmd/micro/server/api.go`). Nodes on the gRPC server are called with gRPC+JSON over HTTP/2, other nodes through the default client. Unary calls only; use an edge gateway for streams.
 - **`/health`, `/health/live`, `/health/ready`**, without auth.
 - **JWT login, tokens, users and endpoint scopes** under `/auth/`.
 

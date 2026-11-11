@@ -1,9 +1,15 @@
 package server
 
 import (
+	"encoding/binary"
+	"io"
+	"net/url"
+
 	"context"
 	"encoding/json"
 	"errors"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -91,7 +97,7 @@ func TestAPICall(t *testing.T) {
 		t.Fatalf("service error: %d %v", code, out)
 	}
 	code, out = post(t, hs.URL+"/api/nobody/Svc/Call", `{}`)
-	if code != 404 || out["id"] != apiErrorID {
+	if code != 404 || !strings.Contains(out["detail"].(string), "nobody") {
 		t.Fatalf("unknown service: %d %v", code, out)
 	}
 	code, _ = post(t, hs.URL+"/api/greeter/Greeter/Hello", `not json`)
@@ -127,7 +133,70 @@ func TestAPISkipsGRPCNodes(t *testing.T) {
 	}
 }
 
-func TestAPIRefusesGRPCServices(t *testing.T) {
+// grpcJSONServer answers gRPC+JSON calls over cleartext HTTP/2 the way
+// go-micro's gRPC server does, without the gRPC library: /orders.Orders/Get
+// echoes the request and the x-test header, /orders.Orders/Fail fails with
+// a go-micro error in the trailers.
+func grpcJSONServer(t *testing.T) string {
+	t.Helper()
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor != 2 || r.Header.Get("Content-Type") != "application/grpc+json" {
+			http.Error(w, "not gRPC", http.StatusBadRequest)
+			return
+		}
+		frame, _ := io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/grpc+json")
+		w.Header().Set("Trailer", "Grpc-Status, Grpc-Message")
+		switch r.URL.Path {
+		case "/orders.Orders/Get":
+			reply := []byte(`{"req":` + string(frame[5:]) + `,"header":"` + r.Header.Get("X-Test") + `"}`)
+			out := make([]byte, 5+len(reply))
+			binary.BigEndian.PutUint32(out[1:5], uint32(len(reply)))
+			copy(out[5:], reply)
+			w.Write(out)
+			w.Header().Set("Grpc-Status", "0")
+		case "/orders.Orders/Fail":
+			w.Header().Set("Grpc-Status", "3")
+			w.Header().Set("Grpc-Message", url.PathEscape(merr.BadRequest("orders", "bad input").Error()))
+		default:
+			w.Header().Set("Grpc-Status", "12")
+			w.Header().Set("Grpc-Message", "unknown method")
+		}
+	})
+	srv := httptest.NewUnstartedServer(h2c.NewHandler(h, &http2.Server{}))
+	srv.Start()
+	t.Cleanup(srv.Close)
+	return strings.TrimPrefix(srv.URL, "http://")
+}
+
+// Services on the gRPC server are called with gRPC+JSON; a node that is
+// down is skipped.
+func TestAPICallsGRPCServices(t *testing.T) {
+	hs, reg := testAPI(t)
+	if err := reg.Register(&registry.Service{Name: "orders", Nodes: []*registry.Node{
+		{Id: "orders-down", Address: "127.0.0.1:1", Metadata: map[string]string{"protocol": "grpc"}},
+		{Id: "orders-1", Address: grpcJSONServer(t), Metadata: map[string]string{"protocol": "grpc"}},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 6; i++ {
+		code, out := post(t, hs.URL+"/api/orders/Orders/Get", `{"id":"7"}`, "X-Test", "v1")
+		req, _ := out["req"].(map[string]any)
+		if code != 200 || req["id"] != "7" || out["header"] != "v1" {
+			t.Fatalf("call %d: %d %v", i, code, out)
+		}
+	}
+	code, out := post(t, hs.URL+"/api/orders/Orders/Fail", `{}`)
+	if code != 400 || out["id"] != "orders" || out["detail"] != "bad input" {
+		t.Fatalf("service error: %d %v", code, out)
+	}
+	code, _ = post(t, hs.URL+"/api/orders/Orders/Nope", `{}`)
+	if code != 501 {
+		t.Fatalf("unknown method: %d", code)
+	}
+}
+
+func TestAPIGRPCServiceDown(t *testing.T) {
 	hs, reg := testAPI(t)
 	if err := reg.Register(&registry.Service{Name: "orders", Nodes: []*registry.Node{
 		{Id: "orders-1", Address: "127.0.0.1:1", Metadata: map[string]string{"protocol": "grpc"}},
@@ -135,8 +204,8 @@ func TestAPIRefusesGRPCServices(t *testing.T) {
 		t.Fatal(err)
 	}
 	code, out := post(t, hs.URL+"/api/orders/Orders/Get", `{}`)
-	if code != 501 || !strings.Contains(out["detail"].(string), "gRPC") {
-		t.Fatalf("gRPC service: %d %v", code, out)
+	if code != 503 || out["id"] != client.ConnectErrorID {
+		t.Fatalf("gRPC service down: %d %v", code, out)
 	}
 }
 

@@ -3,31 +3,27 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/flylib/go-micro/client"
-	"github.com/flylib/go-micro/codec/bytes"
+	"github.com/flylib/go-micro/cmd/micro/internal/caller"
 	merr "github.com/flylib/go-micro/errors"
 	"github.com/flylib/go-micro/metadata"
 	"github.com/flylib/go-micro/registry"
-	"github.com/flylib/go-micro/selector"
 )
 
 // The dashboard's HTTP API: POST /api/{service}/{endpoint} calls the
 // service with the JSON body and answers with its JSON reply. The endpoint
-// is "Handler.Method" or "Handler/Method". Calls go through the default
-// client, as `micro call` does, so they reach services on the default
-// RPC server; services on the gRPC server are reached through the edge
-// gateways (gateway/proxy, gateway/openresty) instead.
+// is "Handler.Method" or "Handler/Method". Calls are made as `micro call`
+// makes them (cmd/micro/internal/caller): gRPC+JSON to nodes on the gRPC
+// server, the default client to others.
 
 const (
-	apiErrorID  = "micro.api"
-	maxAPIBody  = 4 << 20
-	apiPrefix   = "/api/"
-	grpcProtoID = "grpc"
+	apiErrorID = "micro.api"
+	maxAPIBody = 4 << 20
+	apiPrefix  = "/api/"
 )
 
 // apiCaller calls services; a variable so tests can use their own client
@@ -86,69 +82,13 @@ func (a *apiCaller) serveAPI(w http.ResponseWriter, r *http.Request, check func(
 }
 
 // call sends a JSON request to a service endpoint and returns the JSON
-// reply. Errors are go-micro errors.
+// reply, on whichever server the service runs. Errors are go-micro errors.
 func (a *apiCaller) call(ctx context.Context, service, endpoint string, body []byte, hdr http.Header) ([]byte, error) {
-	if len(strings.TrimSpace(string(body))) == 0 {
-		body = []byte("{}")
-	}
-	if !json.Valid(body) {
+	if len(strings.TrimSpace(string(body))) != 0 && !json.Valid(body) {
 		return nil, merr.BadRequest(apiErrorID, "request body is not JSON")
 	}
-	svcs, err := a.registry.GetService(service)
-	if err != nil || len(svcs) == 0 {
-		return nil, merr.NotFound(apiErrorID, "service %s not found", service)
-	}
-	if onlyGRPC(svcs) {
-		return nil, merr.New(apiErrorID, fmt.Sprintf("service %s runs the gRPC server: call it through an edge gateway's HTTP entry (gateway/proxy, gateway/openresty)", service), http.StatusNotImplemented)
-	}
-
 	ctx = metadata.NewContext(ctx, callMetadata(hdr))
-	req := a.client.NewRequest(service, endpoint, &bytes.Frame{Data: body}, client.WithContentType("application/json"))
-	var rsp bytes.Frame
-	// skip gRPC nodes of a service that also has nodes the client can reach
-	if err := a.client.Call(ctx, req, &rsp, client.WithSelectOption(selector.WithFilter(withoutGRPC))); err != nil {
-		if e := merr.Parse(err.Error()); e.Code > 0 {
-			return nil, e
-		}
-		return nil, merr.InternalServerError(apiErrorID, "%s", err.Error())
-	}
-	if len(rsp.Data) == 0 {
-		return []byte("{}"), nil
-	}
-	return rsp.Data, nil
-}
-
-// withoutGRPC drops nodes that run the gRPC server.
-func withoutGRPC(svcs []*registry.Service) []*registry.Service {
-	out := make([]*registry.Service, 0, len(svcs))
-	for _, s := range svcs {
-		cp := *s
-		cp.Nodes = nil
-		for _, n := range s.Nodes {
-			if n.Metadata["protocol"] != grpcProtoID {
-				cp.Nodes = append(cp.Nodes, n)
-			}
-		}
-		if len(cp.Nodes) > 0 {
-			out = append(out, &cp)
-		}
-	}
-	return out
-}
-
-// onlyGRPC reports whether every node of a service runs the gRPC server,
-// which the default client cannot reach.
-func onlyGRPC(svcs []*registry.Service) bool {
-	n := 0
-	for _, s := range svcs {
-		for _, node := range s.Nodes {
-			if node.Metadata["protocol"] != grpcProtoID {
-				return false
-			}
-			n++
-		}
-	}
-	return n > 0
+	return caller.Call(ctx, a.registry, a.client, service, endpoint, body)
 }
 
 // callMetadata forwards request headers as call metadata, except the

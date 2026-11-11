@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/flylib/go-micro/cmd/micro/internal/caller"
 	"os"
 	"os/exec"
 
@@ -11,7 +12,6 @@ import (
 
 	"github.com/flylib/go-micro/client"
 	"github.com/flylib/go-micro/cmd"
-	"github.com/flylib/go-micro/codec/bytes"
 	"github.com/flylib/go-micro/registry"
 
 	"github.com/flylib/go-micro/cmd/micro/cli/new"
@@ -115,14 +115,13 @@ func init() {
 				callCtx = util.AddMetadataToContext(callCtx, ctx.StringSlice("metadata"))
 				callCtx = util.AddMetadataToContext(callCtx, ctx.StringSlice("header"))
 
-				req := client.NewRequest(service, endpoint, &bytes.Frame{Data: []byte(request)})
-				var rsp bytes.Frame
-				err := client.Call(callCtx, req, &rsp)
+				// works for services on the gRPC server and on the default one
+				rsp, err := caller.Call(callCtx, registry.DefaultRegistry, client.DefaultClient, service, endpoint, []byte(request))
 				if err != nil {
 					return err
 				}
 
-				fmt.Print(string(rsp.Data))
+				fmt.Print(string(rsp))
 				return nil
 			},
 		},

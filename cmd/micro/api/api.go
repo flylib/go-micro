@@ -18,6 +18,8 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/flylib/go-micro/cmd/micro/internal/caller"
+	merrors "github.com/flylib/go-micro/errors"
 	"io"
 	"net/http"
 	"os"
@@ -26,13 +28,12 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/urfave/cli/v2"
 	"github.com/flylib/go-micro/broker"
 	"github.com/flylib/go-micro/client"
 	"github.com/flylib/go-micro/cmd"
-	codecBytes "github.com/flylib/go-micro/codec/bytes"
 	"github.com/flylib/go-micro/registry"
 	"github.com/flylib/go-micro/store"
+	"github.com/urfave/cli/v2"
 )
 
 func init() {
@@ -123,16 +124,19 @@ func run(c *cli.Context) error {
 			body = []byte("{}")
 		}
 
-		req := client.DefaultClient.NewRequest(serviceName, endpoint, &codecBytes.Frame{Data: body})
-		var rsp codecBytes.Frame
-
-		if err := client.DefaultClient.Call(r.Context(), req, &rsp); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
+		// works for services on the gRPC server and on the default one
+		rsp, err := caller.Call(r.Context(), registry.DefaultRegistry, client.DefaultClient, serviceName, endpoint, body)
+		if err != nil {
+			code := http.StatusInternalServerError
+			if e := merrors.Parse(err.Error()); e.Code >= 400 && e.Code <= 599 {
+				code = int(e.Code)
+			}
+			writeError(w, code, err.Error())
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(rsp.Data)
+		w.Write(rsp)
 	})
 
 	fmt.Println()
