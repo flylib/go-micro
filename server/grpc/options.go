@@ -24,6 +24,7 @@ type maxConnKey struct{}
 type tlsAuth struct{}
 type grpcServerKey struct{}
 type gracefulStopTimeoutKey struct{}
+type drainDelayKey struct{}
 
 // gRPC Codec to be used to encode/decode requests for a given content type.
 func Codec(contentType string, c encoding.Codec) server.Option {
@@ -77,6 +78,15 @@ func MaxMsgSize(s int) server.Option {
 // GracefulStopTimeout sets how long Stop waits for active RPCs before forcing Stop.
 func GracefulStopTimeout(timeout time.Duration) server.Option {
 	return setServerOption(gracefulStopTimeoutKey{}, timeout)
+}
+
+// DrainDelay makes Stop keep serving for d after the node is deregistered
+// and its health turns NOT_SERVING, before it stops accepting calls. It
+// gives callers time to learn that the node is gone: registry watches
+// and caches, gateways that poll, Kubernetes endpoints. The default is 0.
+// A few seconds avoid failed calls during rolling deploys.
+func DrainDelay(d time.Duration) server.Option {
+	return setServerOption(drainDelayKey{}, d)
 }
 
 func newOptions(opt ...server.Option) server.Options {

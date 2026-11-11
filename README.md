@@ -291,6 +291,9 @@ health.Register("db", health.PingContextCheck(db.PingContext)) // feeds readines
   - **Readiness.** It follows the critical checks registered with [`health`](health), and turns `NOT_SERVING` while the service drains.
   - **Liveness.** The service name `liveness` reports only that the process is up.
   - **Kubernetes.** Probes need no code: `readinessProbe: {grpc: {port: 9001}}`, `livenessProbe: {grpc: {port: 9001, service: liveness}}`. Details are in [server](server#health-checks-grpc-server).
+- **Rolling deploys.** Two things keep calls from failing while nodes are replaced:
+  - **Callers** retry a node they cannot connect to on another node. This is the client's default, and the gateways do the same.
+  - **Servers** can keep serving for a few seconds after they deregister: `grpcserver.NewServer(grpcserver.DrainDelay(5 * time.Second))`. Readiness is already `NOT_SERVING` during that time. Use it when callers learn about nodes with a delay, such as a polling gateway or Kubernetes endpoints.
 - **Zombie instances.** [`micro-inspect`](registry/inspect) probes every node in Nacos, etcd or Consul. It alerts to Feishu, DingTalk or WeCom when a node is registered but does not answer, or reports itself unhealthy.
 - **Topology, metrics and alerts.** Use an eBPF APM such as [Coroot](https://github.com/coroot/coroot). It needs no code changes and sees gRPC, Redis, MongoDB, Kafka and NATS traffic between services. Prometheus metrics (`wrapper/monitoring/prometheus`) and OpenTelemetry traces (`wrapper/trace/opentelemetry`) are available as wrappers.
 - **Kafka for analytics.** Use `kafka.Async()` for fire-and-forget events. A synchronous publish waits for Kafka's acknowledgement.

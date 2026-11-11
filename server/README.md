@@ -11,6 +11,15 @@ The inbound half of RPC — listens on a transport, routes requests to registere
 
 Implementations: RPC (default) · gRPC (`server/grpc`, own module) · mock (tests).
 
+## Graceful stop (gRPC server)
+
+`Stop` runs in this order:
+
+1. Readiness turns `NOT_SERVING`.
+2. The node is deregistered.
+3. With `grpc.DrainDelay(d)`, the server keeps serving for `d`, so callers that have not yet noticed still get answers. The default is 0.
+4. The server stops accepting calls and waits for calls in flight, for at most `grpc.GracefulStopTimeout` (default 1 s). Then it closes the rest.
+
 ## Health checks (gRPC server)
 
 The gRPC server also serves the standard `grpc.health.v1.Health` service, so Kubernetes gRPC probes, load balancers and probing tools (Uptime Kuma, Gatus, grpc_health_probe) can check a service without any code.

@@ -219,6 +219,14 @@ func (g *grpcServer) getGrpcServer() *grpc.Server {
 	return nil
 }
 
+func (g *grpcServer) getDrainDelay() time.Duration {
+	if g.opts.Context == nil {
+		return 0
+	}
+	d, _ := g.opts.Context.Value(drainDelayKey{}).(time.Duration)
+	return d
+}
+
 func (g *grpcServer) getGracefulStopTimeout() time.Duration {
 	if g.opts.Context == nil {
 		return time.Second
@@ -990,6 +998,12 @@ func (g *grpcServer) Start() error {
 		// deregister self
 		if err := g.Deregister(); err != nil {
 			log.Log(logger.ErrorLevel, "Server deregister error: ", err)
+		}
+
+		// keep serving while callers learn that the node is gone
+		if d := g.getDrainDelay(); d > 0 {
+			log.Logf(logger.InfoLevel, "Server [grpc] deregistered, draining for %s", d)
+			time.Sleep(d)
 		}
 
 		gracefulStopTimeout := g.getGracefulStopTimeout()
