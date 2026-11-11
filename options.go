@@ -39,3 +39,7 @@ var BeforeStop = service.BeforeStop
 var AfterStart = service.AfterStart
 var AfterStop = service.AfterStop
 var Logger = service.Logger
+
+// FromEnv configures the service from MICRO_* environment variables:
+// registry, broker, store and server address. See service.FromEnv.
+var FromEnv = service.FromEnv

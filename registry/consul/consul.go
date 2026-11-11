@@ -19,6 +19,11 @@ import (
 	mtls "github.com/flylib/go-micro/util/tls"
 )
 
+func init() {
+	// selectable by name: MICRO_REGISTRY=consul
+	registry.RegisterPlugin("consul", NewConsulRegistry)
+}
+
 // metaVersionKey is the Meta key holding the service version. Consul Meta
 // keys allow only [A-Za-z0-9_-], so it cannot be nacos's "micro.version".
 const metaVersionKey = "micro_version"

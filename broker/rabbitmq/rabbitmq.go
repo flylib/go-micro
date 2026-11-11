@@ -14,6 +14,11 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+func init() {
+	// selectable by name: MICRO_BROKER=rabbitmq
+	broker.RegisterPlugin("rabbitmq", NewBroker)
+}
+
 type rbroker struct {
 	conn           *rabbitMQConn
 	addrs          []string

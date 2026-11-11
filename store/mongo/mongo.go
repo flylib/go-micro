@@ -32,6 +32,11 @@ import (
 	"github.com/flylib/go-micro/store"
 )
 
+func init() {
+	// selectable by name: MICRO_STORE=mongo
+	store.RegisterPlugin("mongo", NewStore)
+}
+
 var (
 	// DefaultDatabase and DefaultTable apply when neither the store nor
 	// the call names one, as in the memory store.

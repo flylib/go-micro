@@ -15,6 +15,11 @@ import (
 	natsp "github.com/nats-io/nats.go"
 )
 
+func init() {
+	// selectable by name: MICRO_BROKER=nats
+	broker.RegisterPlugin("nats", NewNatsBroker)
+}
+
 type natsBroker struct {
 	sync.Once
 	sync.RWMutex

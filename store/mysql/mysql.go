@@ -11,6 +11,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+func init() {
+	// selectable by name: MICRO_STORE=mysql
+	store.RegisterPlugin("mysql", NewMysqlStore)
+}
+
 var (
 	// DefaultDatabase is the database that the sql store will use if no database is provided.
 	DefaultDatabase = "micro"

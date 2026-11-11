@@ -22,6 +22,11 @@ import (
 	"go.uber.org/zap"
 )
 
+func init() {
+	// selectable by name: MICRO_REGISTRY=etcd
+	registry.RegisterPlugin("etcd", NewEtcdRegistry)
+}
+
 var (
 	prefix = "/micro/registry/"
 )

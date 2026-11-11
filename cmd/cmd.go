@@ -406,6 +406,9 @@ func (c *cmd) Before(ctx *cli.Context) error {
 	if name := ctx.String("store"); len(name) > 0 {
 		s, ok := c.opts.Stores[name]
 		if !ok {
+			s, ok = store.Plugin(name)
+		}
+		if !ok {
 			return fmt.Errorf("unsupported store: %s", name)
 		}
 
@@ -452,6 +455,10 @@ func (c *cmd) Before(ctx *cli.Context) error {
 	if name := ctx.String("registry"); len(name) > 0 && (*c.opts.Registry).String() != name {
 		r, ok := c.opts.Registries[name]
 		if !ok {
+			// plugins register themselves when their package is linked in
+			r, ok = registry.Plugin(name)
+		}
+		if !ok {
 			return fmt.Errorf("Registry %s not found", name)
 		}
 
@@ -472,6 +479,9 @@ func (c *cmd) Before(ctx *cli.Context) error {
 	// Set the broker
 	if name := ctx.String("broker"); len(name) > 0 && (*c.opts.Broker).String() != name {
 		b, ok := c.opts.Brokers[name]
+		if !ok {
+			b, ok = broker.Plugin(name)
+		}
 		if !ok {
 			return fmt.Errorf("Broker %s not found", name)
 		}
@@ -496,6 +506,9 @@ func (c *cmd) Before(ctx *cli.Context) error {
 	// Set the transport
 	if name := ctx.String("transport"); len(name) > 0 && (*c.opts.Transport).String() != name {
 		t, ok := c.opts.Transports[name]
+		if !ok {
+			t, ok = transport.Plugin(name)
+		}
 		if !ok {
 			return fmt.Errorf("Transport %s not found", name)
 		}

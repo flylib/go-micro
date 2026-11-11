@@ -35,6 +35,11 @@ import (
 	"github.com/flylib/go-micro/store"
 )
 
+func init() {
+	// selectable by name: MICRO_STORE=postgres
+	store.RegisterPlugin("postgres", NewStore)
+}
+
 // DefaultDatabase is the namespace that the sql store
 // will use if no namespace is provided.
 var (

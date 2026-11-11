@@ -12,6 +12,11 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+func init() {
+	// selectable by name: MICRO_REGISTRY=nats
+	registry.RegisterPlugin("nats", NewNatsRegistry)
+}
+
 type natsRegistry struct {
 	addrs          []string
 	opts           registry.Options

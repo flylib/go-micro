@@ -33,4 +33,29 @@ svc.Handle(new(OrdersHandler))
 svc.Run()
 ```
 
+## From the environment
+
+`service.FromEnv()` (`micro.FromEnv()`) sets the registry, broker, store and server address from `MICRO_*` variables, so one binary runs in every environment:
+
+```go
+import _ "github.com/flylib/go-micro/registry/nacos" // registers the plugin "nacos"
+
+svc := micro.New("orders",
+    micro.FromEnv(),          // MICRO_REGISTRY=nacos MICRO_REGISTRY_ADDRESS=nacos:8848 MICRO_SERVER_ADDRESS=:9001
+    micro.Version("1.4.2"),   // options after FromEnv win over the environment
+)
+```
+
+| Variable | Sets |
+|---|---|
+| `MICRO_REGISTRY`, `MICRO_REGISTRY_ADDRESS` | Registry plugin by name, and its comma-separated addresses |
+| `MICRO_BROKER`, `MICRO_BROKER_ADDRESS` | Broker plugin and addresses |
+| `MICRO_STORE`, `MICRO_STORE_ADDRESS`, `MICRO_STORE_DATABASE`, `MICRO_STORE_TABLE` | Store plugin, addresses, database and table |
+| `MICRO_SERVER_ADDRESS`, `MICRO_SERVER_ADVERTISE` | Listen address, and the address registered for callers |
+| `MICRO_SERVER_VERSION`, `MICRO_SERVER_METADATA` | Version, and `key=value,key=value` node metadata |
+
+- **Plugins by name.** Built-in names (`mdns`, `memory`, `http`, `file`, ...) always work. A plugin module registers its name in `init` (`registry.RegisterPlugin`, `broker.RegisterPlugin`, `store.RegisterPlugin`, `transport.RegisterPlugin`), so it works once the package is linked in. An unknown name stops the service at start-up, and the error names the import to add. `<KIND>_ADDRESS` without the kind is an error too.
+- **Precedence.** `FromEnv` is an option like any other: options after it win, options before it lose. It parses no command line flags, unlike `Service.Init`.
+- **The gRPC preset.** [`service/grpc`](grpc) is `micro.New` on the gRPC server and client with `FromEnv` first: `grpcservice.New("orders")`.
+
 Related: [server](../server) (inbound), [client](../client) (outbound), [registry](../registry) (discovery).

@@ -13,6 +13,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+func init() {
+	// selectable by name: MICRO_STORE=nats-js-kv
+	store.RegisterPlugin("nats-js-kv", NewStore)
+}
+
 var (
 	// ErrBucketNotFound is returned when the requested bucket does not exist.
 	ErrBucketNotFound = errors.New("Bucket (database) not found")

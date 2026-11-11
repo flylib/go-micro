@@ -15,6 +15,11 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+func init() {
+	// selectable by name: MICRO_TRANSPORT=nats
+	transport.RegisterPlugin("nats", NewTransport)
+}
+
 type ntport struct {
 	addrs           []string
 	opts            transport.Options

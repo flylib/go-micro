@@ -13,6 +13,11 @@ import (
 	log "github.com/flylib/go-micro/logger"
 )
 
+func init() {
+	// selectable by name: MICRO_BROKER=kafka
+	broker.RegisterPlugin("kafka", NewBroker)
+}
+
 type kafkaBroker struct {
 	addrs []string
 
