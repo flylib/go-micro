@@ -3,10 +3,10 @@ module github.com/flylib/go-micro/registry/inspect
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261111102209-6867b9831f2b
-	github.com/flylib/go-micro/registry/consul v0.0.0-20261111102209-6867b9831f2b
-	github.com/flylib/go-micro/registry/etcd v0.0.0-20261111102209-6867b9831f2b
-	github.com/flylib/go-micro/registry/nacos v0.0.0-20261111102209-6867b9831f2b
+	github.com/flylib/go-micro v0.0.0-20261111105112-8b5dae7ea07c
+	github.com/flylib/go-micro/registry/consul v0.0.0-20261111105112-8b5dae7ea07c
+	github.com/flylib/go-micro/registry/etcd v0.0.0-20261111105112-8b5dae7ea07c
+	github.com/flylib/go-micro/registry/nacos v0.0.0-20261111105112-8b5dae7ea07c
 	google.golang.org/grpc v1.81.0
 )
 

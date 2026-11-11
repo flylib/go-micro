@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/logger/zap
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261111102209-6867b9831f2b
+	github.com/flylib/go-micro v0.0.0-20261111105112-8b5dae7ea07c
 	go.uber.org/zap v1.28.0
 )
 

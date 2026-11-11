@@ -2,7 +2,7 @@ module github.com/flylib/go-micro/store/mongo
 
 go 1.26.0
 
-require github.com/flylib/go-micro v0.0.0-20261111102209-6867b9831f2b
+require github.com/flylib/go-micro v0.0.0-20261111105112-8b5dae7ea07c
 
 require (
 	github.com/golang/protobuf v1.5.4 // indirect

@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/store/mysql
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261111102209-6867b9831f2b
+	github.com/flylib/go-micro v0.0.0-20261111105112-8b5dae7ea07c
 	github.com/go-sql-driver/mysql v1.9.2
 	github.com/pkg/errors v0.9.1
 )

@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/flylib/go-micro v0.0.0-20261111102209-6867b9831f2b
+	github.com/flylib/go-micro v0.0.0-20261111105112-8b5dae7ea07c
 )
 
 require (
