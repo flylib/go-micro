@@ -2,7 +2,7 @@ module github.com/flylib/go-micro/registry/nacos
 
 go 1.26.0
 
-require github.com/flylib/go-micro v0.0.0-20261005074409-675a5b60f75d
+require github.com/flylib/go-micro v0.0.0-20261111102209-6867b9831f2b
 
 require (
 	github.com/BurntSushi/toml v1.4.0 // indirect

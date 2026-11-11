@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/alicebob/miniredis/v2 v2.39.0
-	github.com/flylib/go-micro v0.0.0-20261005074409-675a5b60f75d
+	github.com/flylib/go-micro v0.0.0-20261111102209-6867b9831f2b
 	github.com/redis/go-redis/v9 v9.21.0
 )
 

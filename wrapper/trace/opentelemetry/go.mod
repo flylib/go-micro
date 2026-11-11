@@ -3,7 +3,7 @@ module github.com/flylib/go-micro/wrapper/trace/opentelemetry
 go 1.26.0
 
 require (
-	github.com/flylib/go-micro v0.0.0-20261005074409-675a5b60f75d
+	github.com/flylib/go-micro v0.0.0-20261111102209-6867b9831f2b
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/trace v1.35.0
 )
