@@ -109,7 +109,7 @@ Install the CLI:
 go install github.com/flylib/go-micro/cmd/micro@main
 ```
 
-Scaffold a service, run it, call it:
+Scaffold a service, run it, call it. The generated service runs on gRPC and takes its registry, broker and listen address from the environment ([Running in Production](#running-in-production)):
 
 ```bash
 micro new helloworld
@@ -227,6 +227,18 @@ service := micro.New("orders",
 )
 ```
 
+Or leave the choice to the environment. A plugin registers under its name when its package is linked in, and `micro.FromEnv()` picks it by name:
+
+```go
+import (
+    "github.com/flylib/go-micro"
+    _ "github.com/flylib/go-micro/broker/nats"    // MICRO_BROKER=nats
+    _ "github.com/flylib/go-micro/registry/nacos" // MICRO_REGISTRY=nacos
+)
+
+service := micro.New("orders", micro.FromEnv())
+```
+
 - **Registry:** mDNS (default), Consul, etcd, NATS, Nacos
 - **Broker:** HTTP (default), NATS, RabbitMQ, Kafka, memory
 - **Transport:** HTTP (default), gRPC, NATS
@@ -271,22 +283,42 @@ Services only need the gRPC server (`server/grpc`) and a proto package equal to 
 
 ## Running in Production
 
-A service as the edge gateways and operations tools expect it:
+A service as the edge gateways and operations tools expect it. [`service/grpc`](service/grpc) is the preset: the gRPC server and client, configured from the environment. `micro new` generates this.
 
 ```go
-svc := micro.New("users",
-    micro.Server(grpcserver.NewServer()),  // gRPC: gateways, health probes, any gRPC client
-    micro.Client(grpcclient.NewClient()),
-    micro.Address(":9001"),                // a fixed port, see below
-    micro.Registry(nacos.NewRegistry(registry.Addrs("nacos:8848"), nacos.WithAuth(user, pass))),
-    micro.Broker(nats.NewNatsBroker(broker.Addrs("nats:4222"))),
+import (
+    "github.com/flylib/go-micro"
+    grpcservice "github.com/flylib/go-micro/service/grpc"
+
+    _ "github.com/flylib/go-micro/broker/nats"    // linked in, so MICRO_BROKER=nats works
+    _ "github.com/flylib/go-micro/registry/nacos" // linked in, so MICRO_REGISTRY=nacos works
+)
+
+svc := grpcservice.New("users",
     micro.WrapHandler(logging.NewHandlerWrapper()), // access logs with trace ids
 )
 health.Register("db", health.PingContextCheck(db.PingContext)) // feeds readiness
 ```
 
+The same binary then runs in every environment:
+
+| Variable | Example | Sets |
+|---|---|---|
+| `MICRO_SERVER_ADDRESS` | `:9001` | Listen address. Use a fixed port, see below. |
+| `MICRO_SERVER_ADVERTISE` | `10.0.3.7:9001` | Address registered for callers, if it is not the listen address |
+| `MICRO_SERVER_VERSION`, `MICRO_SERVER_METADATA` | `1.4.2`, `zone=a,canary=true` | Version and node metadata in the registry |
+| `MICRO_REGISTRY`, `MICRO_REGISTRY_ADDRESS` | `nacos`, `nacos:8848` | Registry plugin and its addresses |
+| `MICRO_REGISTRY_USERNAME`, `MICRO_REGISTRY_PASSWORD` | | Nacos credentials |
+| `MICRO_REGISTRY_NAMESPACE`, `MICRO_REGISTRY_GROUP` | `prod` | Nacos namespace and group |
+| `MICRO_BROKER`, `MICRO_BROKER_ADDRESS` | `nats`, `nats:4222` | Broker plugin and its addresses |
+| `MICRO_STORE`, `MICRO_STORE_ADDRESS`, `MICRO_STORE_DATABASE`, `MICRO_STORE_TABLE` | `redis`, `redis://redis:6379` | Store plugin and where it keeps data |
+| `MICRO_SERVER_DRAIN_DELAY`, `MICRO_SERVER_GRACEFUL_STOP_TIMEOUT` | `5s`, `30s` | Rolling deploys, see below |
+
+- **Plugins by name.** A name works once the plugin's package is linked in, usually with a blank import. An unknown name stops the service at start-up and the error names the import to add. Without `MICRO_REGISTRY` the service uses mDNS, for local development.
+- **Code wins.** Options passed to `grpcservice.New` are applied after the environment. With plain `micro.New`, `micro.FromEnv()` does the same from its position in the option list: options after it win.
+- **Without the preset.** `micro.New("users", micro.Server(grpcserver.NewServer()), micro.Client(grpcclient.NewClient()), micro.Registry(nacos.NewRegistry(...)), ...)` builds the same service in code.
 - **Options in any order.** Settings given before `micro.Server`, `micro.Client` or `micro.Broker` are applied to the component passed there. These include the name, registry, broker, wrappers and handlers.
-- **Fixed ports.** Without `micro.Address`, a server listens on a random port. Kubernetes Services and NetworkPolicies need a fixed one. So do eBPF tools: Coroot, for one, ignores listeners in the ephemeral port range and does not see calls to them.
+- **Fixed ports.** Without `MICRO_SERVER_ADDRESS` or `micro.Address`, a server listens on a random port. The preset logs a warning when such a service registers anywhere but mDNS. Kubernetes Services and NetworkPolicies need a fixed one. So do eBPF tools: Coroot, for one, ignores listeners in the ephemeral port range and does not see calls to them.
 - **Health checks.** The gRPC server serves the standard `grpc.health.v1` service:
   - **Readiness.** It follows the critical checks registered with [`health`](health), and turns `NOT_SERVING` while the service drains.
   - **Liveness.** The service name `liveness` reports only that the process is up.
@@ -317,10 +349,10 @@ go get github.com/flylib/go-micro/registry/nacos@main github.com/flylib/go-micro
 
 | Command | Purpose |
 |---|---|
-| `micro new myservice` | Scaffold a service (`--template crud/pubsub/api`) |
+| `micro new myservice` | Scaffold a gRPC service (`--template crud/pubsub/api`) |
 | `micro run` | Dev mode: hot reload + HTTP API gateway + dashboard |
 | `micro server` | Production mode: gateway with auth + dashboard |
-| `micro call service Endpoint '{}'` | Call a service from the CLI |
+| `micro call service Endpoint '{}'` | Call a service from the CLI, on the gRPC or the default RPC server |
 | `micro services` | List registered services |
 | `micro describe service` | Show a service's endpoints |
 | `micro gen proto` | Generate code from `.proto` (needs protoc + protoc-gen-micro) |

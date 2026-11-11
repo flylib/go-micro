@@ -21,6 +21,11 @@ Priorities come from the teams that build on this fork: services on gRPC, regist
   - `micro-inspect` reports zombie and unhealthy registry instances to Feishu, DingTalk or WeCom.
   - Topology, metrics and alerting through an eBPF APM (Coroot), checked with a proof of concept.
   - Every module declares the same Go version (1.26).
+- **Service defaults.**
+  - Callers retry unreachable nodes on another node; gRPC servers drain and wait for calls in flight on stop.
+  - `service/grpc` is the production preset, and `micro new` generates services on it.
+  - `micro.FromEnv()` configures a service from `MICRO_*` variables; plugins are selected by name once linked in.
+  - The CLI and the dashboard call services on the gRPC server.
 
 ## Next
 

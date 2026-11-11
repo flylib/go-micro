@@ -54,7 +54,7 @@ go-micro/
 ├── registry/       # Service discovery (mDNS, memory; etcd, Consul, Nacos, NATS modules; inspect: micro-inspect zombie checks)
 ├── selector/       # Client-side load balancing
 ├── server/         # RPC server (mucp; gRPC module)
-├── service/        # Service interface
+├── service/        # Service interface, FromEnv; service/grpc: the gRPC preset module (grpcservice.New)
 ├── store/          # KV persistence (file, memory; Postgres, MySQL, NATS KV, Redis, MongoDB modules)
 ├── sync/           # Locks and leader election (memory; etcd, Redis modules)
 ├── transport/      # Network transport (HTTP; gRPC, NATS modules)
@@ -71,6 +71,8 @@ go-micro/
 - **Gateways follow one contract**: `gateway/SPEC.md` and `rules.schema.json` define behaviour, and `gateway/conformance` enforces it. Any gateway change goes into the SPEC, both implementations and the suite together. Keep the schema copies in `proxy/`, `conformance/` and `openresty/lib/resty/micro/` identical to `gateway/rules.schema.json`.
 - **gRPC routing convention**: a service's proto package equals its registry name, so `/<service>.<Handler>/<Method>` needs no route.
 - **Option order does not matter**: service options record what they set on the server, client and broker (`service/options.go`, `onServer`/`onClient`/`onBroker`) and replay it when `Server`/`Client`/`Broker` replace a component. New options that touch those components must go through these helpers.
+- **Plugins register by name**: a plugin module calls `registry.RegisterPlugin` (or the `broker`, `store`, `transport` one) in `init`, so `micro.FromEnv()` and the `cmd` flags find it by name once it is linked in. Plugins must not import `cmd`: that drags the core's dependencies into every plugin. A new backend registers its name the same way.
+- **gRPC is the default for generated services**: `service/grpc` is the preset (gRPC server + client + `micro.FromEnv()`), and `micro new` templates use it. It is a separate module because the core cannot import `server/grpc`. The CLI and dashboard reach gRPC nodes through `cmd/micro/internal/caller`, which uses `util/grpc.CallJSON` (gRPC+JSON over h2c, no grpc-go in the core).
 - **Reflection-based registration**: Handlers are registered via reflection for minimal boilerplate. Doc comments on handler methods become endpoint metadata (`server/comments.go`).
 
 ## Code Conventions
@@ -91,6 +93,8 @@ go-micro/
 | OpenResty gateway | `gateway/openresty/lib/resty/micro/` |
 | Model layer | `model/model.go` |
 | CLI entry | `cmd/micro/main.go` |
+| Service preset / env config | `service/grpc/grpc.go`, `service/env.go` |
+| CLI and dashboard service calls | `cmd/micro/internal/caller/caller.go`, `util/grpc/json.go` |
 | Server (run/server) | `cmd/micro/server/server.go` |
 | Module pinning | `internal/scripts/release-modules.sh` |
 | Changelog | `CHANGELOG.md` |
